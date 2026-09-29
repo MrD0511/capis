@@ -1,0 +1,29 @@
+# Gradle caches and generated output
+.gradle/
+**/build/
+.kotlin/
+
+# Compiled Java output
+*.class
+**/bin/
+out/
+
+# IDE metadata
+.idea/
+*.iml
+.vscode/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Local environment files
+.env
+.env.*
+!.env.example

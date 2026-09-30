@@ -1,17 +1,23 @@
 package com.capis.entities;
 
+import com.capis.DataTpes.Core.Value;
+
 public class KeyValueStore {
-    LRUCache<String, String> cache;
+    private LRUCache<String, Value<?>> cache;
 
     public KeyValueStore(int capacity) {
         this.cache = new LRUCache<>(capacity);
     }
 
-    public String get(String key) {
+    public Value<?> get(String key) {
         return cache.get(key);
     }
 
-    public void put(String key, String value) {
+    public void put(String key, Value<?> value) {
         cache.put(key, value);
+    }
+
+    public Value<?> remove(String key) {
+        return cache.remove(key);
     }
 }

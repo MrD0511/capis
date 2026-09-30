@@ -60,4 +60,14 @@ public class LRUCache<K, V> {
             
         }
     }
+
+    public synchronized V remove(K key){
+        Node<K, V> node = map.get(key);
+        if(node != null){
+            this.list.remove(node);
+            map.remove(key);
+            return node.value;
+        }
+        return null;
+    }
 }

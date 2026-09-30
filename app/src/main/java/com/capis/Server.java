@@ -1,10 +1,15 @@
 package com.capis;
 
 
-// import com.capis.entities.LRUCache;
-import com.capis.entities.Parser;
 import java.nio.charset.StandardCharsets;
-import com.capis.entities.CommandHandler;
+
+import com.capis.Parser.Parser;
+import com.capis.Commands.CommandHandler;
+import com.capis.Commands.EchoCommand;
+import com.capis.Commands.GetCommand;
+import com.capis.Commands.PingCommand;
+import com.capis.Commands.SetCommand;
+import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 import java.io.InputStream;
@@ -14,17 +19,84 @@ import java.net.Socket;
 
 public class Server {
 
+    int port = 6379; // Default Redis port
+    KeyValueStore keyValueStore;
+    Parser parser;
+    CommandHandler commandHandler;
+
+    public Server(int port, int capacity){
+        this.port = port;
+        this.keyValueStore = new KeyValueStore(capacity);
+        this.parser = new Parser();
+        this.commandHandler = new CommandHandler();
+
+        this.commandHandler.registerCommand(new PingCommand());
+        this.commandHandler.registerCommand(new EchoCommand());
+        this.commandHandler.registerCommand(new GetCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new SetCommand(this.keyValueStore));
+    } 
+
+    public void start() throws Exception {
+        ServerSocket serverSocket = new ServerSocket(this.port);
+
+        printBanner();
+
+        while (true) {
+            Socket socket = serverSocket.accept();
+
+            System.out.println(
+                "Accepted connection from " + socket.getInetAddress()
+            );
+
+            try (
+                socket;
+                InputStream input = socket.getInputStream();
+                OutputStream output = socket.getOutputStream()
+            ) {
+                while (true) {
+                    String[] command = parser.decode(input);
+
+                    if (command == null) {
+                        System.out.println("Client disconnected");
+                        break;
+                    }
+
+                    if (command.length == 0) {
+                        output.write(
+                            "-ERR Empty command\r\n"
+                                .getBytes(StandardCharsets.UTF_8)
+                        );
+                        output.flush();
+                        continue;
+                    }
+
+                    RespValue respVal = commandHandler.execute(command);
+
+                    String response = parser.encode(respVal);
+
+                    output.write(
+                        response.getBytes(StandardCharsets.UTF_8)
+                    );
+                    output.flush();
+                }
+
+            } catch (java.net.SocketException e) {
+                System.out.println("Client disconnected: " + e.getMessage());
+
+            } catch (Exception e) {
+                System.err.println("Error handling client:");
+                e.printStackTrace();
+            }
+        }
+    }
+
     public static void main(String[] args) throws Exception {
+        Server server = new Server(6379, 100);
 
-        int port = 6379; // Default Redis port
+        server.start();
+    }   
 
-
-        KeyValueStore keyValueStore = new KeyValueStore(100); // Capacity of 100 entries
-        Parser parser = new Parser();
-        CommandHandler commandHandler = new CommandHandler();
-
-        ServerSocket serverSocket = new ServerSocket(port);
-
+    private static void printBanner(){
         System.out.println();
         System.out.println();
         System.out.println();
@@ -35,7 +107,7 @@ public class Server {
                         "  ██║     ███████║██████╔╝██║███████╗\n" + //
                         "  ██║     ██╔══██║██╔═══╝ ██║╚════██║\n" + //
                         "  ╚██████╗██║  ██║██║     ██║███████║\n" + //
-                        "  ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝");
+                        "   ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝");
         System.out.println();
         System.out.println();
 
@@ -44,33 +116,6 @@ public class Server {
 
         System.out.println();
         System.out.println();
-
-        while(true){
-            Socket socket = serverSocket.accept();
-            System.out.println("Accepted connection from " + socket.getInetAddress());
-
-            InputStream input = socket.getInputStream();
-            OutputStream output = socket.getOutputStream();
-
-            while(true){
-                String[] command = parser.parse(input);
-                if (command == null) {
-                    break;
-                }
-                if(command.length == 0){
-                    output.write("-ERR Empty command\r\n".getBytes(StandardCharsets.UTF_8));
-                    output.flush();
-                    continue;
-                }
-
-                String response = commandHandler.execute(command, keyValueStore);
-
-                output.write(response.getBytes());
-                output.flush();
-            }
-
-            socket.close();
-        }
 
     }
 }

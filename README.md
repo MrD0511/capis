@@ -53,4 +53,78 @@ app/src/main/java/com/capis/entities/               RESP parsing and storage cla
 gradle/wrapper/                                      Gradle wrapper files
 ```
 
+## Class diagram
+
+```mermaid
+classDiagram
+	class Server {
+		-int port
+		-KeyValueStore keyValueStore
+		-Parser parser
+		-CommandHandler commandHandler
+		+Server(int port, int capacity)
+		+start() void
+		+main(String[] args) void
+	}
+
+	class Parser {
+		+parse(InputStream input) String[]
+		-parseElement(InputStream input, List~String~ accumulator) void
+		-readLine(InputStream input) String
+		-readBulkString(InputStream input, long length) String
+	}
+
+	class CommandHandler {
+		+execute(String[] command, KeyValueStore cache) String
+	}
+
+	class KeyValueStore {
+		-LRUCache~String, String~ cache
+		+KeyValueStore(int capacity)
+		+get(String key) String
+		+put(String key, String value) void
+		+remove(String key) String
+	}
+
+	class LRUCache~K, V~ {
+		-DoublyLinkedList~K, V~ list
+		-long capacity
+		-Map~K, Node~K, V~~ map
+		+LRUCache(int capacity)
+		+get(K key) V
+		+put(K key, V value) void
+		+put(K key, V value, long expiryAtMillis) void
+		+remove(K key) V
+		-putInternal(K key, V value, long expiryAtMillis) void
+	}
+
+	class DoublyLinkedList~K, V~ {
+		-Node~K, V~ head
+		-Node~K, V~ tail
+		+DoublyLinkedList()
+		+addToFront(Node~K, V~ node) void
+		+remove(Node~K, V~ node) void
+		+removeFromEnd() Node~K, V~
+		+moveToFront(Node~K, V~ node) void
+	}
+
+	class Node~K, V~ {
+		+K key
+		+V value
+		+long expiryAtMillis
+		+Node~K, V~ next
+		+Node~K, V~ prev
+	}
+
+	Server *-- KeyValueStore
+	Server *-- Parser
+	Server *-- CommandHandler
+	CommandHandler --> KeyValueStore : executes commands against
+	KeyValueStore *-- LRUCache : wraps
+	LRUCache *-- DoublyLinkedList : maintains recency order
+	LRUCache o-- Node : indexes nodes in map
+	DoublyLinkedList o-- Node : links nodes
+	Node --> Node : next / prev
+```
+
 Generated Gradle output, compiled classes, IDE metadata, logs, and local environment files are excluded by `.gitignore`.

@@ -1,17 +1,25 @@
-package com.capis.entities;
+package com.capis.Parser;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+
+import com.capis.DataTpes.RespValues.RespBulkString;
+import com.capis.DataTpes.RespValues.RespSimpleString;
+import com.capis.DataTpes.RespValues.RespValue;
+
 import java.util.ArrayList;
 
 public class Parser {
 
     // Main entry point for clients
-    public String[] parse(InputStream input) {
+    public String[] decode(InputStream input) {
         try {
             List<String> result = new ArrayList<>();
+            System.out.println("Parsing input stream...");
             parseElement(input, result);
+            System.out.println("Parsed result: " + result);
             return result.toArray(new String[0]);
         } catch (Exception e) {
             e.printStackTrace();
@@ -19,6 +27,29 @@ public class Parser {
         return null;
     }
 
+    public String encode(RespValue value){
+        if(value == null){
+            return "$-1\r\n";
+        }
+
+        if(value instanceof RespSimpleString simple){
+            return "+" + simple.value() + "\r\n";
+        }
+        
+        if(value instanceof RespBulkString bulk){
+            return serializeBulkString(bulk.value());
+        }
+        
+        throw new IllegalArgumentException("Unsupported RespValue type: " + value.getClass().getName());
+    }
+    
+    private String serializeBulkString(String value) {
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+
+        return "$" + bytes.length + "\r\n"
+                + value
+                + "\r\n";
+    }
     /**
      * The core recursive engine. Evaluates the type prefix 
      * and streams findings into the target accumulator list.
@@ -64,6 +95,7 @@ public class Parser {
                 break;
 
             case '*': // Array (Recursion magic happens here!)
+                System.out.println("Parsing array...");
                 String arrayLengthLine = readLine(input);
                 long arrayLength = Long.parseLong(arrayLengthLine);
                 if (arrayLength == -1) {
@@ -75,6 +107,7 @@ public class Parser {
                 for (int i = 0; i < arrayLength; i++) {
                     parseElement(input, accumulator);
                 }
+
                 break;
 
             default:
@@ -123,4 +156,6 @@ public class Parser {
 
         return new String(buffer, "UTF-8");
     }
+
+
 }

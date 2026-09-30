@@ -5,9 +5,18 @@ import java.nio.charset.StandardCharsets;
 
 import com.capis.Parser.Parser;
 import com.capis.Commands.CommandHandler;
+import com.capis.Commands.DELCommand;
 import com.capis.Commands.EchoCommand;
 import com.capis.Commands.GetCommand;
+import com.capis.Commands.INCRCommand;
+import com.capis.Commands.LIndexCommand;
+import com.capis.Commands.LLENCommand;
+import com.capis.Commands.LPUSHCommand;
+import com.capis.Commands.LRangeCommand;
+import com.capis.Commands.MGetCommand;
+import com.capis.Commands.MSetCommand;
 import com.capis.Commands.PingCommand;
+import com.capis.Commands.RPushCommand;
 import com.capis.Commands.SetCommand;
 import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
@@ -34,6 +43,15 @@ public class Server {
         this.commandHandler.registerCommand(new EchoCommand());
         this.commandHandler.registerCommand(new GetCommand(this.keyValueStore));
         this.commandHandler.registerCommand(new SetCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new MSetCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new MGetCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new LPUSHCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new RPushCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new LLENCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new LIndexCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new LRangeCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new DELCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new INCRCommand(this.keyValueStore));
     } 
 
     public void start() throws Exception {
@@ -73,6 +91,8 @@ public class Server {
                     RespValue respVal = commandHandler.execute(command);
 
                     String response = parser.encode(respVal);
+
+                    System.out.println("Sending response: " + response);
 
                     output.write(
                         response.getBytes(StandardCharsets.UTF_8)

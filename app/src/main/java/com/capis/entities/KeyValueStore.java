@@ -1,5 +1,6 @@
 package com.capis.entities;
 
+import com.capis.DataTpes.Core.StringValue;
 import com.capis.DataTpes.Core.Value;
 
 public class KeyValueStore {
@@ -19,5 +20,37 @@ public class KeyValueStore {
 
     public Value<?> remove(String key) {
         return cache.remove(key);
+    }
+
+    public boolean containsKey(String key) {
+        return cache.containsKey(key);
+    }
+
+    public synchronized Value<?> increment(String key){
+        Value<?> value = cache.get(key);
+
+        if (value == null) {
+            return null;
+        }
+
+        if (!(value instanceof StringValue stringValue)) {
+            throw new IllegalArgumentException("Value is not a string");
+        }
+
+        long val;
+        
+        try {
+            val = Long.parseLong(stringValue.getValue());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                "Value is not an integer"
+            );
+        }
+
+        val++;
+
+        stringValue.setValue(String.valueOf(val));
+
+        return stringValue;
     }
 }

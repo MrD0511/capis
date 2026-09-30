@@ -68,22 +68,44 @@ classDiagram
 	}
 
 	class Parser {
-		+parse(InputStream input) String[]
+		+decode(InputStream input) String[]
+		+encode(RespValue value) String
 		-parseElement(InputStream input, List~String~ accumulator) void
 		-readLine(InputStream input) String
 		-readBulkString(InputStream input, long length) String
 	}
 
 	class CommandHandler {
-		+execute(String[] command, KeyValueStore cache) String
+		-Map~String, Command~ commands
+		+registerCommand(Command command) void
+		+execute(String[] args) RespValue
 	}
 
+	class Command {
+		<<interface>>
+		+getName() String
+		+execute(String[] args) RespValue
+	}
+
+	class PingCommand
+	class EchoCommand
+	class GetCommand
+	class SetCommand
+	class MSetCommand
+	class MGetCommand
+	class LPUSHCommand
+	class RPushCommand
+	class LLENCommand
+	class LIndexCommand
+	class LRangeCommand
+
 	class KeyValueStore {
-		-LRUCache~String, String~ cache
+		-LRUCache~String, Value~?~~ cache
 		+KeyValueStore(int capacity)
-		+get(String key) String
-		+put(String key, String value) void
-		+remove(String key) String
+		+get(String key) Value~?~
+		+put(String key, Value~?~ value) void
+		+remove(String key) Value~?~
+		+containsKey(String key) boolean
 	}
 
 	class LRUCache~K, V~ {
@@ -95,6 +117,7 @@ classDiagram
 		+put(K key, V value) void
 		+put(K key, V value, long expiryAtMillis) void
 		+remove(K key) V
+		+containsKey(K key) boolean
 		-putInternal(K key, V value, long expiryAtMillis) void
 	}
 
@@ -116,15 +139,68 @@ classDiagram
 		+Node~K, V~ prev
 	}
 
+	class Value~T~ {
+		<<sealed interface>>
+		+getValue() T
+		+setValue(T value) void
+	}
+
+	class StringValue
+	class ListValue
+	class SetValue
+	class SortedSetValue
+
+	class RespValue {
+		<<interface>>
+	}
+
+	class RespArray
+	class RespBulkString
+	class RespErr
+	class RespInteger
+	class RespSimpleString
+
 	Server *-- KeyValueStore
 	Server *-- Parser
 	Server *-- CommandHandler
-	CommandHandler --> KeyValueStore : executes commands against
-	KeyValueStore *-- LRUCache : wraps
-	LRUCache *-- DoublyLinkedList : maintains recency order
-	LRUCache o-- Node : indexes nodes in map
+	CommandHandler o-- Command : registers
+	CommandHandler --> Command : dispatches
+	Command <|.. PingCommand
+	Command <|.. EchoCommand
+	Command <|.. GetCommand
+	Command <|.. SetCommand
+	Command <|.. MSetCommand
+	Command <|.. MGetCommand
+	Command <|.. LPUSHCommand
+	Command <|.. RPushCommand
+	Command <|.. LLENCommand
+	Command <|.. LIndexCommand
+	Command <|.. LRangeCommand
+	GetCommand --> KeyValueStore
+	SetCommand --> KeyValueStore
+	MSetCommand --> KeyValueStore
+	MGetCommand --> KeyValueStore
+	LPUSHCommand --> KeyValueStore
+	RPushCommand --> KeyValueStore
+	LLENCommand --> KeyValueStore
+	LIndexCommand --> KeyValueStore
+	LRangeCommand --> KeyValueStore
+	Parser --> RespValue : encodes / decodes
+	KeyValueStore *-- LRUCache : stores values in
+	LRUCache *-- DoublyLinkedList : maintains recency
+	LRUCache o-- Node : indexes nodes
 	DoublyLinkedList o-- Node : links nodes
 	Node --> Node : next / prev
+	Value~T~ <|.. StringValue
+	Value~T~ <|.. ListValue
+	Value~T~ <|.. SetValue
+	Value~T~ <|.. SortedSetValue
+	RespValue <|.. RespArray
+	RespValue <|.. RespBulkString
+	RespValue <|.. RespErr
+	RespValue <|.. RespInteger
+	RespValue <|.. RespSimpleString
+	KeyValueStore --> Value~?~
 ```
 
 Generated Gradle output, compiled classes, IDE metadata, logs, and local environment files are excluded by `.gitignore`.

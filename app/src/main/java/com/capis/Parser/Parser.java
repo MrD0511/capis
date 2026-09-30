@@ -5,7 +5,10 @@ import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 
+import com.capis.DataTpes.RespValues.RespArray;
 import com.capis.DataTpes.RespValues.RespBulkString;
+import com.capis.DataTpes.RespValues.RespErr;
+import com.capis.DataTpes.RespValues.RespInteger;
 import com.capis.DataTpes.RespValues.RespSimpleString;
 import com.capis.DataTpes.RespValues.RespValue;
 
@@ -35,9 +38,21 @@ public class Parser {
         if(value instanceof RespSimpleString simple){
             return "+" + simple.value() + "\r\n";
         }
+
+        if(value instanceof RespInteger integer){
+            return ":" + integer.value() + "\r\n";
+        }
         
         if(value instanceof RespBulkString bulk){
             return serializeBulkString(bulk.value());
+        }
+
+        if(value instanceof RespErr err){
+            return "-" + err.type() + " " + err.message() + "\r\n";
+        }
+
+        if(value instanceof RespArray array){
+            return serializeArray(array);
         }
         
         throw new IllegalArgumentException("Unsupported RespValue type: " + value.getClass().getName());
@@ -50,6 +65,22 @@ public class Parser {
                 + value
                 + "\r\n";
     }
+
+    private String serializeArray(RespArray value) {
+
+        StringBuilder result = new StringBuilder();
+
+        result.append("*")
+              .append(value.values().size())
+              .append("\r\n");
+
+        for (RespValue element : value.values()) {
+            result.append(encode(element));
+        }
+
+        return result.toString();
+    }
+    
     /**
      * The core recursive engine. Evaluates the type prefix 
      * and streams findings into the target accumulator list.
@@ -156,6 +187,4 @@ public class Parser {
 
         return new String(buffer, "UTF-8");
     }
-
-
 }

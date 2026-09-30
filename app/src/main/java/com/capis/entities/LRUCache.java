@@ -70,4 +70,8 @@ public class LRUCache<K, V> {
         }
         return null;
     }
+
+    public synchronized boolean containsKey(K key) {
+        return map.containsKey(key);
+    }
 }

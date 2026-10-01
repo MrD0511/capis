@@ -30,7 +30,7 @@ public class KeyValueStore {
         Value<?> value = cache.get(key);
 
         if (value == null) {
-            return null;
+            throw new IllegalArgumentException("Key does not exist");
         }
 
         if (!(value instanceof StringValue stringValue)) {
@@ -42,12 +42,36 @@ public class KeyValueStore {
         try {
             val = Long.parseLong(stringValue.getValue());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(
-                "Value is not an integer"
-            );
+            throw new IllegalArgumentException("Value is not a valid integer");
         }
 
         val++;
+
+        stringValue.setValue(String.valueOf(val));
+
+        return stringValue;
+    }
+
+    public synchronized Value<?> decrement(String key){
+        Value<?> value = cache.get(key);
+
+        if (value == null) {
+            throw new IllegalArgumentException("Key does not exist");
+        }
+
+        if (!(value instanceof StringValue stringValue)) {
+            throw new IllegalArgumentException("Value is not a string");
+        }
+
+        long val;
+        
+        try {
+            val = Long.parseLong(stringValue.getValue());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Value is not a valid integer");
+        }
+
+        val--;
 
         stringValue.setValue(String.valueOf(val));
 

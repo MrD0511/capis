@@ -20,9 +20,7 @@ public class Parser {
     public String[] decode(InputStream input) {
         try {
             List<String> result = new ArrayList<>();
-            System.out.println("Parsing input stream...");
             parseElement(input, result);
-            System.out.println("Parsed result: " + result);
             return result.toArray(new String[0]);
         } catch (Exception e) {
             e.printStackTrace();
@@ -58,6 +56,7 @@ public class Parser {
         throw new IllegalArgumentException("Unsupported RespValue type: " + value.getClass().getName());
     }
     
+    // Core serialization logic
     private String serializeBulkString(String value) {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
 
@@ -81,10 +80,8 @@ public class Parser {
         return result.toString();
     }
     
-    /**
-     * The core recursive engine. Evaluates the type prefix 
-     * and streams findings into the target accumulator list.
-     */
+
+    // Core parsing logic
     private void parseElement(InputStream input, List<String> accumulator) throws Exception {
         int typeByte = input.read();
         if (typeByte == -1) {
@@ -126,7 +123,6 @@ public class Parser {
                 break;
 
             case '*': // Array (Recursion magic happens here!)
-                System.out.println("Parsing array...");
                 String arrayLengthLine = readLine(input);
                 long arrayLength = Long.parseLong(arrayLengthLine);
                 if (arrayLength == -1) {

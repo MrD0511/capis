@@ -57,14 +57,25 @@ gradle/wrapper/                                      Gradle wrapper files
 
 ```mermaid
 classDiagram
-	class Server {
+	class App {
+		+main(String[] args) void
+		-printBanner() void
+	}
+
+	class NioServer {
 		-int port
+		-CapisCore capisCore
+		+NioServer(int port, CapisCore capisCore)
+		+start() void
+		+sendMessage(SocketChannel client, String message) void
+	}
+
+	class CapisCore {
 		-KeyValueStore keyValueStore
 		-Parser parser
 		-CommandHandler commandHandler
-		+Server(int port, int capacity)
-		+start() void
-		+main(String[] args) void
+		+CapisCore(int capacity)
+		+run(InputStream input) String
 	}
 
 	class Parser {
@@ -76,7 +87,7 @@ classDiagram
 	}
 
 	class CommandHandler {
-		-Map~String, Command~ commands
+		-Map~String, Command~ commandMap
 		+registerCommand(Command command) void
 		+execute(String[] args) RespValue
 	}
@@ -98,6 +109,8 @@ classDiagram
 	class LLENCommand
 	class LIndexCommand
 	class LRangeCommand
+	class DELCommand
+	class INCRCommand
 
 	class KeyValueStore {
 		-LRUCache~String, Value~?~~ cache
@@ -106,6 +119,7 @@ classDiagram
 		+put(String key, Value~?~ value) void
 		+remove(String key) Value~?~
 		+containsKey(String key) boolean
+		+increment(String key) Value~?~
 	}
 
 	class LRUCache~K, V~ {
@@ -160,9 +174,11 @@ classDiagram
 	class RespInteger
 	class RespSimpleString
 
-	Server *-- KeyValueStore
-	Server *-- Parser
-	Server *-- CommandHandler
+	App --> NioServer : starts
+	NioServer *-- CapisCore
+	CapisCore *-- KeyValueStore
+	CapisCore *-- Parser
+	CapisCore *-- CommandHandler
 	CommandHandler o-- Command : registers
 	CommandHandler --> Command : dispatches
 	Command <|.. PingCommand
@@ -176,6 +192,8 @@ classDiagram
 	Command <|.. LLENCommand
 	Command <|.. LIndexCommand
 	Command <|.. LRangeCommand
+	Command <|.. DELCommand
+	Command <|.. INCRCommand
 	GetCommand --> KeyValueStore
 	SetCommand --> KeyValueStore
 	MSetCommand --> KeyValueStore
@@ -185,6 +203,8 @@ classDiagram
 	LLENCommand --> KeyValueStore
 	LIndexCommand --> KeyValueStore
 	LRangeCommand --> KeyValueStore
+	DELCommand --> KeyValueStore
+	INCRCommand --> KeyValueStore
 	Parser --> RespValue : encodes / decodes
 	KeyValueStore *-- LRUCache : stores values in
 	LRUCache *-- DoublyLinkedList : maintains recency

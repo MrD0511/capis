@@ -25,7 +25,7 @@ public class MSetCommand implements Command {
         if (args == null || args.length < 3 || args.length % 2 == 0) {
             return new RespErr(
                 "ERR",
-                "wrong number of arguments for 'mset' command"
+                "wrong number of arguments for 'mset' command."
             );
         }
 
@@ -34,7 +34,7 @@ public class MSetCommand implements Command {
             String value = args[i + 1];
 
             if(key == null || value == null || key.isEmpty() || value.isEmpty()) {
-                return new RespErr("ERR", "wrong number of arguments for 'mset' command\r\n");
+                return new RespErr("ERR", "wrong number of arguments for 'mset' command.");
             }
 
             cache.put(key, new StringValue(value));

@@ -37,7 +37,7 @@ public class MGetCommand implements Command {
         for(int i = 1; i < args.length; i++) {
             String key = args[i];
             if(key == null || key.isEmpty()) {
-                return new RespErr("ERR", "wrong number of arguments for 'mget' command\r\n");
+                return new RespErr("ERR", "wrong number of arguments for 'mget' command");
             }
 
             Value<?> value = cache.get(key);

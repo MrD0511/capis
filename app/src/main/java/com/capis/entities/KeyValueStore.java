@@ -1,5 +1,7 @@
 package com.capis.entities;
 
+import java.util.Set;
+
 import com.capis.DataTpes.Core.StringValue;
 import com.capis.DataTpes.Core.Value;
 
@@ -26,11 +28,24 @@ public class KeyValueStore {
         return cache.containsKey(key);
     }
 
+    public void put(String key, Value<?> value, long ttlMillis) {
+        cache.put(key, value, System.currentTimeMillis() + ttlMillis);
+    }
+
+    public boolean expire(String key, long ttlMillis) { return cache.expire(key, ttlMillis); }
+    public Long ttlMillis(String key)                 { return cache.ttlMillis(key); }
+    public boolean persist(String key)                { return cache.persist(key); }
+    public Set<String> keys()                         { return cache.keys(); }
+    public int size()                                 { return cache.size(); }
+    public void clear()                               { cache.clear(); }
+
     public synchronized Value<?> increment(String key){
         Value<?> value = cache.get(key);
 
         if (value == null) {
-            throw new IllegalArgumentException("Key does not exist");
+            StringValue newValue = new StringValue("1");
+            cache.put(key, newValue);
+            return newValue;
         }
 
         if (!(value instanceof StringValue stringValue)) {
@@ -56,7 +71,9 @@ public class KeyValueStore {
         Value<?> value = cache.get(key);
 
         if (value == null) {
-            throw new IllegalArgumentException("Key does not exist");
+            StringValue newValue = new StringValue("-1");
+            cache.put(key, newValue);
+            return newValue;
         }
 
         if (!(value instanceof StringValue stringValue)) {
@@ -77,4 +94,6 @@ public class KeyValueStore {
 
         return stringValue;
     }
+
+
 }

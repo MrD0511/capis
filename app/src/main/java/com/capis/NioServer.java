@@ -28,7 +28,7 @@ public class NioServer {
         ServerSocketChannel server = ServerSocketChannel.open();
 
         // 3. Listen on port 6379
-        server.bind(new InetSocketAddress(6379));
+        server.bind(new InetSocketAddress(this.port));
 
         // 4. Make it non-blocking
         server.configureBlocking(false);
@@ -78,36 +78,40 @@ public class NioServer {
 
                 // Client sent data
                 else if (key.isReadable()) {
-
-                    SocketChannel client =
-                            (SocketChannel) key.channel();
-
-                    ByteBuffer buffer =
-                            ByteBuffer.allocate(1024);
-
-                    int bytesRead = client.read(buffer);
-
-                    if (bytesRead == -1) {
-                        client.close();
-                        continue;
-                    }
-
-                    buffer.flip();
-
-                    InputStream input = new InputStream() {
-                        @Override
-                        public int read() {
-                            if (!buffer.hasRemaining()) {
-                                return -1;
-                            }
-
-                            return buffer.get() & 0xFF;
-                        }
-                    };
+                    SocketChannel client = (SocketChannel) key.channel();
                     
-                    String response = capisCore.run(input);
+                    try{
 
-                    sendMessage(client, response);
+                        ByteBuffer buffer =
+                                ByteBuffer.allocate(1024);
+
+                        int bytesRead = client.read(buffer);
+
+                        if (bytesRead == -1) {
+                            client.close();
+                            continue;
+                        }
+
+                        buffer.flip();
+
+                        InputStream input = new InputStream() {
+                            @Override
+                            public int read() {
+                                if (!buffer.hasRemaining()) {
+                                    return -1;
+                                }
+
+                                return buffer.get() & 0xFF;
+                            }
+                        };
+                        
+                        String response = capisCore.run(input);
+
+                        sendMessage(client, response);
+                    }catch(Exception e){
+                        e.printStackTrace();
+                        sendMessage(client, "-ERR Internal server error\r\n");
+                    }
                 }
             }
         }

@@ -3,10 +3,16 @@ package com.capis;
 import java.io.InputStream;
 
 import com.capis.Commands.CommandHandler;
+import com.capis.Commands.DBSIZECommand;
 import com.capis.Commands.DECRCommand;
 import com.capis.Commands.DELCommand;
+import com.capis.Commands.EXISTSCommand;
+import com.capis.Commands.EXPIRECommand;
 import com.capis.Commands.EchoCommand;
+import com.capis.Commands.FLUSHALLCommand;
 import com.capis.Commands.GetCommand;
+import com.capis.Commands.HGETALLCommand;
+import com.capis.Commands.HSETCommand;
 import com.capis.Commands.INCRCommand;
 import com.capis.Commands.LIndexCommand;
 import com.capis.Commands.LLENCommand;
@@ -15,15 +21,19 @@ import com.capis.Commands.LPUSHCommand;
 import com.capis.Commands.LRangeCommand;
 import com.capis.Commands.MGetCommand;
 import com.capis.Commands.MSetCommand;
+import com.capis.Commands.PERSISTCommand;
 import com.capis.Commands.PingCommand;
 import com.capis.Commands.RPOPCommand;
 import com.capis.Commands.RPushCommand;
 import com.capis.Commands.SADDCommand;
 import com.capis.Commands.SCARDCommand;
+import com.capis.Commands.SETEXCommand;
 import com.capis.Commands.SISMEMBERCommand;
 import com.capis.Commands.SMEMBERSCommand;
 import com.capis.Commands.SREMCommand;
 import com.capis.Commands.SetCommand;
+import com.capis.Commands.TTLCommand;
+import com.capis.Commands.TypeCommand;
 import com.capis.DataTpes.RespValues.RespErr;
 import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.Parser.Parser;
@@ -60,13 +70,23 @@ public class CapisCore {
         this.commandHandler.registerCommand(new SMEMBERSCommand(this.keyValueStore));
         this.commandHandler.registerCommand(new LPOPCommand(this.keyValueStore));
         this.commandHandler.registerCommand(new RPOPCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new TypeCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new EXISTSCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new DBSIZECommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new EXPIRECommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new TTLCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new PERSISTCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new FLUSHALLCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new SETEXCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new HSETCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new HGETALLCommand(this.keyValueStore));
     }
 
     public String run(InputStream input) throws Exception{
         String[] command = parser.decode(input);
 
         if (command == null) {
-            return null;
+            return parser.encode(new RespErr("ERR", "Failed to decode command"));
         }
 
         if (command.length == 0) {

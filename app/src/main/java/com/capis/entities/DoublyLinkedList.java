@@ -1,5 +1,8 @@
 package com.capis.entities;
 
+import java.util.ArrayList;
+import java.util.List;
+
 class DoublyLinkedList<K, V> {
     private Node<K, V> head;
     private Node<K, V> tail;
@@ -36,9 +39,24 @@ class DoublyLinkedList<K, V> {
         return nodeToRemove;
     }
 
+    public List<Node<K, V>> nodes() {
+        List<Node<K, V>> snapshot = new ArrayList<>();
+
+        for(Node<K, V> current = this.head.next; current != this.tail; current = current.next) {
+            snapshot.add(current);
+        }
+
+        return snapshot;
+    }
+
     public void moveToFront(Node<K, V> node) {
         remove(node);
         addToFront(node);
+    }
+
+    public void clear() {
+        head.next = tail;
+        tail.prev = head;
     }
 
 }

@@ -2,6 +2,7 @@ package com.capis;
 
 import java.io.InputStream;
 
+import com.capis.Commands.AppendCommand;
 import com.capis.Commands.CommandHandler;
 import com.capis.Commands.DBSIZECommand;
 import com.capis.Commands.DECRCommand;
@@ -10,9 +11,11 @@ import com.capis.Commands.EXISTSCommand;
 import com.capis.Commands.EXPIRECommand;
 import com.capis.Commands.EchoCommand;
 import com.capis.Commands.FLUSHALLCommand;
+import com.capis.Commands.GETDELCommand;
 import com.capis.Commands.GetCommand;
 import com.capis.Commands.HGETALLCommand;
 import com.capis.Commands.HSETCommand;
+import com.capis.Commands.INCRBYFLOATCommand;
 import com.capis.Commands.INCRCommand;
 import com.capis.Commands.LIndexCommand;
 import com.capis.Commands.LLENCommand;
@@ -31,9 +34,12 @@ import com.capis.Commands.SETEXCommand;
 import com.capis.Commands.SISMEMBERCommand;
 import com.capis.Commands.SMEMBERSCommand;
 import com.capis.Commands.SREMCommand;
+import com.capis.Commands.STRLENCommand;
 import com.capis.Commands.SetCommand;
 import com.capis.Commands.TTLCommand;
 import com.capis.Commands.TypeCommand;
+import com.capis.Commands.ZADDCommand;
+import com.capis.Commands.ZRANGECommand;
 import com.capis.DataTpes.RespValues.RespErr;
 import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.Parser.Parser;
@@ -80,6 +86,12 @@ public class CapisCore {
         this.commandHandler.registerCommand(new SETEXCommand(this.keyValueStore));
         this.commandHandler.registerCommand(new HSETCommand(this.keyValueStore));
         this.commandHandler.registerCommand(new HGETALLCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new GETDELCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new AppendCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new ZADDCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new ZRANGECommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new STRLENCommand(this.keyValueStore));
+        this.commandHandler.registerCommand(new INCRBYFLOATCommand(this.keyValueStore));
     }
 
     public String run(InputStream input) throws Exception{

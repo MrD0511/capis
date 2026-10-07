@@ -5,30 +5,28 @@ import com.capis.DataTpes.RespValues.RespInteger;
 import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
-public class DELCommand implements Command {
-    String name = "DEL";
-    KeyValueStore cache;
+public class EXISTSCommand implements Command {
+    private final String name = "EXISTS";
+    private KeyValueStore cache;
 
-    public DELCommand(KeyValueStore cache) {
+    public EXISTSCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
-        // Implementation for DEL command
-        // For each key in args, delete the key from the cache
-        if (args == null || args.length < 2) {
-            // Handle error: wrong number of arguments
-            return new RespErr("ERR", "wrong number of arguments for 'DEL' command");
+        if(args == null || args.length < 2) {
+            return new RespErr("ERR", "wrong number of arguments for 'exists' command");
         }
 
         int count = 0;
         for (int i = 1; i < args.length; i++) {
-            String key = args[i];
-            if (cache.remove(key) != null) {
+            if(cache.get(args[i]) != null) {
                 count++;
             }
         }

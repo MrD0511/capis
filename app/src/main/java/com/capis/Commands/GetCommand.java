@@ -21,7 +21,7 @@ public class GetCommand implements Command {
 
     public RespValue execute(String[] args) {
         if (args == null || args.length != 2) {
-            return new RespErr("ERR", "wrong number of arguments for 'get' command\r\n");
+            return new RespErr("ERR", "wrong number of arguments for 'get' command.");
         }
 
         String key = args[1];
@@ -35,6 +35,6 @@ public class GetCommand implements Command {
             return new RespBulkString(((StringValue) value).getValue());
         }
 
-        return new RespErr("WRONGTYPE", "Operation against a key holding the wrong kind of value\r\n");
+        return new RespErr("WRONGTYPE", "Operation against a key holding the wrong kind of value.");
     }
 }

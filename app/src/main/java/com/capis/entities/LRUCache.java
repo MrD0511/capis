@@ -1,12 +1,17 @@
 package com.capis.entities;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 
 public class LRUCache<K, V> {
     private DoublyLinkedList<K, V> list;
     private long capacity;
     private Map<K, Node<K, V>> map;
+    private int size = 0;
+
+    static final long NO_EXPIRY = Long.MAX_VALUE;
 
     public LRUCache(int capacity) {
         this.capacity = capacity;
@@ -23,6 +28,8 @@ public class LRUCache<K, V> {
             this.list.remove(expiredNode);
 
             map.remove(key);
+
+            size--;
 
             return null;
         }
@@ -56,8 +63,9 @@ public class LRUCache<K, V> {
 
             Node<K, V> newNode = new Node<>(key, value, expiryAtMillis);
             this.list.addToFront(newNode);
+
             map.put(key, newNode);
-            
+            size++;
         }
     }
 
@@ -65,6 +73,7 @@ public class LRUCache<K, V> {
         Node<K, V> node = map.get(key);
         if(node != null){
             this.list.remove(node);
+            size--;
             map.remove(key);
             return node.value;
         }
@@ -72,6 +81,71 @@ public class LRUCache<K, V> {
     }
 
     public synchronized boolean containsKey(K key) {
-        return map.containsKey(key);
+        if(map.containsKey(key) && System.currentTimeMillis() <= map.get(key).expiryAtMillis) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    public synchronized Set<K> keys() {
+        Set<K> keys = new LinkedHashSet<>();
+
+        long now = System.currentTimeMillis();
+
+        for (Node<K, V> node : list.nodes()) {
+            if (now <= node.expiryAtMillis) {
+                keys.add(node.key);
+            }
+        }
+
+        return keys;
+    }
+
+    public synchronized int size() {
+        return this.size;
+    }
+
+    public synchronized void clear() {
+        map.clear();
+        list.clear();
+    }
+
+    public synchronized boolean expire(K key, long ttlMillis){
+        Node<K, V> node = map.get(key);
+        if(node == null || System.currentTimeMillis() > node.expiryAtMillis) {
+            return false;
+        }
+
+        node.expiryAtMillis = System.currentTimeMillis() + ttlMillis;
+        list.moveToFront(node);
+        return true;
+    }
+
+    public synchronized Long ttlMillis(K key){
+        Node<K, V> node = map.get(key);
+        if(node == null) {
+            return null;
+        }
+
+        if(node.expiryAtMillis == NO_EXPIRY) {
+            return -1L;
+        }
+
+        return Math.max(
+            0L,
+            node.expiryAtMillis - System.currentTimeMillis()
+        );
+    }
+
+    public synchronized boolean persist(K key){
+        Node<K, V> node = map.get(key);
+        if(node == null) {
+            return false;
+        }
+
+        node.expiryAtMillis = NO_EXPIRY;
+        list.moveToFront(node);
+        return true;
     }
 }

@@ -20,7 +20,7 @@ public class SetCommand implements Command {
 
     public RespValue execute(String[] args) {
         if (args.length != 3) {
-            return new RespErr("ERR", "SET command requires exactly two arguments.\r\n");
+            return new RespErr("ERR", "SET command requires exactly two arguments.");
         }
         String key = args[1];
         String value = args[2];

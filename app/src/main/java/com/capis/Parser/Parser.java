@@ -1,7 +1,8 @@
 package com.capis.Parser;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.capis.DataTpes.RespValues.RespArray;
@@ -11,14 +12,32 @@ import com.capis.DataTpes.RespValues.RespInteger;
 import com.capis.DataTpes.RespValues.RespSimpleString;
 import com.capis.DataTpes.RespValues.RespValue;
 
-import java.util.ArrayList;
-
 public class Parser {
+
+    private boolean isRespValue(byte byt){
+        char c = (char) byt;
+        return c == '+' || c == '-' || c == ':' || c == '$' || c == '*';
+    }
 
     // Main entry point for clients
     public String[] decode(ByteBuffer buffer) {
         buffer.mark();
+
+
+
         try {
+            byte first = buffer.get(buffer.position());
+            if(!isRespValue(first)){
+                String line = readLine(buffer);
+                if(line == null) return null;
+
+                if(line.isEmpty()){     
+                    return null;
+                }
+
+                return line.strip().split("\\s+");
+            }
+
             List<String> result = new ArrayList<>();
 
             boolean success = parseElement(buffer, result);
@@ -32,6 +51,7 @@ public class Parser {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        
         return null;
     }
 
@@ -100,8 +120,7 @@ public class Parser {
         char type = (char) typeByte;
 
         switch (type) {
-            case '+': 
-            case '-': // Error String
+            case '+', '-':
                 String line = readLine(buffer);
 
                 if(line == null){

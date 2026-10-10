@@ -3,7 +3,11 @@ package com.capis;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.*;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 
@@ -12,8 +16,8 @@ import com.capis.Network.ClientState;
 public class NioServer {
 
     int port = 6379; // Default Redis port
-    private CapisCore capisCore;
-    private Selector selector;
+    final private CapisCore capisCore;
+    final private Selector selector;
 
     public NioServer(int port, CapisCore capisCore) throws IOException {
         this.port = port;
@@ -42,7 +46,7 @@ public class NioServer {
 
                 try {
                     if (key.isAcceptable()) {
-                        acceptClient(key, server);
+                        acceptClient(server);
                     } else if (key.isReadable()) {
                         read(key);
                     }
@@ -56,7 +60,7 @@ public class NioServer {
         }
     }
 
-    private void acceptClient(SelectionKey key, ServerSocketChannel server) throws IOException {
+    private void acceptClient(ServerSocketChannel server) throws IOException {
         SocketChannel client = server.accept();
         if (client == null) return; // Guard against spurious wakeups
         
@@ -87,7 +91,7 @@ public class NioServer {
             String response = this.capisCore.handle(buffer, clientState);
             
             // Clear the buffer immediately after handling so it's clean for the next cycle
-            buffer.clear();
+            buffer.compact();
 
             sendMessage(client, response);
 

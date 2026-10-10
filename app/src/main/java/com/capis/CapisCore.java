@@ -41,15 +41,14 @@ import com.capis.Commands.TypeCommand;
 import com.capis.Commands.ZADDCommand;
 import com.capis.Commands.ZRANGECommand;
 import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.Network.ClientState;
 import com.capis.Parser.Parser;
 import com.capis.entities.KeyValueStore;
 
 public class CapisCore {
-    private KeyValueStore keyValueStore;
-    private Parser parser;
-    private CommandHandler commandHandler;
+    private final KeyValueStore keyValueStore;
+    private final Parser parser;
+    private final CommandHandler commandHandler;
 
     public CapisCore(int capacity){
         this.keyValueStore = new KeyValueStore(capacity);
@@ -97,22 +96,21 @@ public class CapisCore {
 
     public String handle(ByteBuffer buffer, ClientState clientState) throws Exception {
         // Decode the command from the InputStream
-        String[] command = parser.decode(buffer);
 
-        // If the command is null, return an error response
-        if (command == null) {
-            return parser.encode(new RespErr("ERR", "Failed to decode command"));
+        StringBuilder output = new StringBuilder();
+        while(buffer.hasRemaining()){
+            String[] command = parser.decode(buffer);
+            if(command == null){
+                break;
+            }
+
+            if(command.length == 0){
+                output.append(parser.encode(new RespErr("ERR", "empty command")));
+            }
+
+            output.append(parser.encode(commandHandler.execute(command, clientState)));
         }
 
-        if (command.length == 0) {
-            return parser.encode(new RespErr("ERR", "empty command"));
-        }
-
-        // If the client is in a transaction, queue the command instead of executing it
-        RespValue respVal = commandHandler.execute(command, clientState);
-
-        String response = parser.encode(respVal);
-
-        return response;
+        return output.toString();
     }
 }

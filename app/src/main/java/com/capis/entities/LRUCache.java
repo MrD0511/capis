@@ -19,7 +19,7 @@ public class LRUCache<K, V> {
         this.map = new HashMap<>();
     }
 
-    public synchronized V get(K key){
+    public V get(K key){
         if(!map.containsKey(key)) return null;
 
         if(System.currentTimeMillis() > map.get(key).expiryAtMillis) {
@@ -39,11 +39,11 @@ public class LRUCache<K, V> {
         return node.value;
     }
 
-    public synchronized void put(K key, V value) {
+    public void put(K key, V value) {
         putInternal(key, value, System.currentTimeMillis() + 24 * 60 * 60 * 1000);
     }
 
-    public synchronized void put(K key, V value, long expiryAtMillis) {
+    public void put(K key, V value, long expiryAtMillis) {
         putInternal(key, value, expiryAtMillis);
     }
 
@@ -57,6 +57,7 @@ public class LRUCache<K, V> {
             while(map.size() >= capacity){
                 Node<K, V> lruNode = this.list.removeFromEnd();
                 if (lruNode != null) {
+                    size--;
                     map.remove(lruNode.key);
                 }
             }
@@ -69,7 +70,7 @@ public class LRUCache<K, V> {
         }
     }
 
-    public synchronized V remove(K key){
+    public V remove(K key){
         Node<K, V> node = map.get(key);
         if(node != null){
             this.list.remove(node);
@@ -80,7 +81,7 @@ public class LRUCache<K, V> {
         return null;
     }
 
-    public synchronized boolean containsKey(K key) {
+    public boolean containsKey(K key) {
         if(map.containsKey(key) && System.currentTimeMillis() <= map.get(key).expiryAtMillis) {
             return true;
         }
@@ -88,7 +89,7 @@ public class LRUCache<K, V> {
         return false;
     }
 
-    public synchronized Set<K> keys() {
+    public Set<K> keys() {
         Set<K> keys = new LinkedHashSet<>();
 
         long now = System.currentTimeMillis();
@@ -102,16 +103,16 @@ public class LRUCache<K, V> {
         return keys;
     }
 
-    public synchronized int size() {
+    public int size() {
         return this.size;
     }
 
-    public synchronized void clear() {
+    public void clear() {
         map.clear();
         list.clear();
     }
 
-    public synchronized boolean expire(K key, long ttlMillis){
+    public boolean expire(K key, long ttlMillis){
         Node<K, V> node = map.get(key);
         if(node == null || System.currentTimeMillis() > node.expiryAtMillis) {
             return false;
@@ -122,7 +123,7 @@ public class LRUCache<K, V> {
         return true;
     }
 
-    public synchronized Long ttlMillis(K key){
+    public Long ttlMillis(K key){
         Node<K, V> node = map.get(key);
         if(node == null) {
             return null;
@@ -138,7 +139,7 @@ public class LRUCache<K, V> {
         );
     }
 
-    public synchronized boolean persist(K key){
+    public boolean persist(K key){
         Node<K, V> node = map.get(key);
         if(node == null) {
             return false;

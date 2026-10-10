@@ -83,6 +83,7 @@ public class NioServer {
             }
 
             buffer.flip();
+            
             String response = this.capisCore.handle(buffer, clientState);
             
             // Clear the buffer immediately after handling so it's clean for the next cycle

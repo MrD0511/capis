@@ -39,7 +39,7 @@ public class KeyValueStore {
     public int size()                                 { return cache.size(); }
     public void clear()                               { cache.clear(); }
 
-    public synchronized Value<?> increment(String key){
+    public Value<?> increment(String key){
         Value<?> value = cache.get(key);
 
         if (value == null) {
@@ -67,7 +67,7 @@ public class KeyValueStore {
         return stringValue;
     }
 
-    public synchronized Value<?> decrement(String key){
+    public Value<?> decrement(String key){
         Value<?> value = cache.get(key);
 
         if (value == null) {

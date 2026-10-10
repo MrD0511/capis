@@ -1,6 +1,6 @@
 package com.capis;
 
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 import com.capis.Commands.AppendCommand;
 import com.capis.Commands.CommandHandler;
@@ -42,6 +42,7 @@ import com.capis.Commands.ZADDCommand;
 import com.capis.Commands.ZRANGECommand;
 import com.capis.DataTpes.RespValues.RespErr;
 import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.Network.ClientState;
 import com.capis.Parser.Parser;
 import com.capis.entities.KeyValueStore;
 
@@ -94,9 +95,11 @@ public class CapisCore {
         this.commandHandler.registerCommand(new INCRBYFLOATCommand(this.keyValueStore));
     }
 
-    public String run(InputStream input) throws Exception{
-        String[] command = parser.decode(input);
+    public String handle(ByteBuffer buffer, ClientState clientState) throws Exception {
+        // Decode the command from the InputStream
+        String[] command = parser.decode(buffer);
 
+        // If the command is null, return an error response
         if (command == null) {
             return parser.encode(new RespErr("ERR", "Failed to decode command"));
         }
@@ -105,7 +108,8 @@ public class CapisCore {
             return parser.encode(new RespErr("ERR", "empty command"));
         }
 
-        RespValue respVal = commandHandler.execute(command);
+        // If the client is in a transaction, queue the command instead of executing it
+        RespValue respVal = commandHandler.execute(command, clientState);
 
         String response = parser.encode(respVal);
 

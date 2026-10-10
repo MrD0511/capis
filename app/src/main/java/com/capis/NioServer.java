@@ -1,128 +1,131 @@
 package com.capis;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 
-
+import com.capis.Network.ClientState;
 
 public class NioServer {
 
     int port = 6379; // Default Redis port
     private CapisCore capisCore;
+    private Selector selector;
 
-    public NioServer(int port, CapisCore capisCore) {
+    public NioServer(int port, CapisCore capisCore) throws IOException {
         this.port = port;
         this.capisCore = capisCore;
+        this.selector = Selector.open();
     }
 
     public void start() throws Exception {
-        
-        Selector selector = Selector.open();
-
-        // 2. Create server channel
         ServerSocketChannel server = ServerSocketChannel.open();
-
-        // 3. Listen on port 6379
         server.bind(new InetSocketAddress(this.port));
-
-        // 4. Make it non-blocking
         server.configureBlocking(false);
-
-        // 5. Tell selector:
-        //    "Tell me when a new client connects"
         server.register(selector, SelectionKey.OP_ACCEPT);
 
-        // 6. Event loop
         while (true) {
-
             selector.select();
-
-            Iterator<SelectionKey> iterator =
-                    selector.selectedKeys().iterator();
+            Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
 
             while (iterator.hasNext()) {
-
                 SelectionKey key = iterator.next();
-
-                // IMPORTANT:
-                // Remove the key after processing it.
                 iterator.remove();
 
-                // New client connected
-                if (key.isAcceptable()) {
-
-                    ServerSocketChannel serverChannel =
-                            (ServerSocketChannel) key.channel();
-
-                    SocketChannel client =
-                            serverChannel.accept();
-
-                    client.configureBlocking(false);
-
-                    // Tell selector:
-                    // "Tell me when this client has data"
-                    client.register(
-                            selector,
-                            SelectionKey.OP_READ
-                    );
-
-                    System.out.println(
-                            "Client connected: " + client.getRemoteAddress()
-                    );
+                // Skip keys that are no longer valid
+                if (!key.isValid()) {
+                    continue;
                 }
 
-                // Client sent data
-                else if (key.isReadable()) {
-                    SocketChannel client = (SocketChannel) key.channel();
-                    
-                    try{
-
-                        ByteBuffer buffer =
-                                ByteBuffer.allocate(1024);
-
-                        int bytesRead = client.read(buffer);
-
-                        if (bytesRead == -1) {
-                            client.close();
-                            continue;
-                        }
-
-                        buffer.flip();
-
-                        InputStream input = new InputStream() {
-                            @Override
-                            public int read() {
-                                if (!buffer.hasRemaining()) {
-                                    return -1;
-                                }
-
-                                return buffer.get() & 0xFF;
-                            }
-                        };
-                        
-                        String response = capisCore.run(input);
-
-                        sendMessage(client, response);
-                    }catch(Exception e){
-                        e.printStackTrace();
-                        sendMessage(client, "-ERR Internal server error\r\n");
+                try {
+                    if (key.isAcceptable()) {
+                        acceptClient(key, server);
+                    } else if (key.isReadable()) {
+                        read(key);
                     }
+                } catch (Exception e) {
+                    // Catch-all block for the loop to keep the server alive 
+                    // if an unhandled edge-case slips out
+                    System.err.println("Error processing key: " + e.getMessage());
+                    closeConnection(key);
                 }
             }
         }
     }
 
-    static void sendMessage(SocketChannel client, String message) throws IOException {
+    private void acceptClient(SelectionKey key, ServerSocketChannel server) throws IOException {
+        SocketChannel client = server.accept();
+        if (client == null) return; // Guard against spurious wakeups
+        
+        client.configureBlocking(false);
+        ClientState clientState = new ClientState();
+        client.register(selector, SelectionKey.OP_READ, clientState);
 
-        ByteBuffer response =
-                StandardCharsets.UTF_8.encode(message);
-
-        client.write(response);
+        System.out.println("Client connected: " + client.getRemoteAddress());
     }
 
+    private void read(SelectionKey key) {
+        SocketChannel client = (SocketChannel) key.channel();
+        ClientState clientState = (ClientState) key.attachment();
+        ByteBuffer buffer = clientState.getInputBuffer();
+
+        try {
+            int bytesRead = client.read(buffer);
+
+            // Client initiated graceful close (-1 means EOF)
+            if (bytesRead == -1) {
+                System.out.println("Client disconnected cleanly.");
+                closeConnection(key);
+                return;
+            }
+
+            buffer.flip();
+            String response = this.capisCore.handle(buffer, clientState);
+            
+            // Clear the buffer immediately after handling so it's clean for the next cycle
+            buffer.clear();
+
+            sendMessage(client, response);
+
+        } catch (IOException e) {
+            // Catches standard connection resets (e.g. client dropped forcefully)
+            System.out.println("Client disconnected forcefully (IOException).");
+            closeConnection(key);
+        } catch (Exception e) {
+            // Engine processing errors or internal bugs
+            System.err.println("Internal handling error: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Safely attempt to send an error message, catch if the write itself fails
+            try {
+                sendMessage(client, "-ERR Internal server error\r\n");
+            } catch (IOException ioException) {
+                closeConnection(key);
+            }
+        }
+    }
+
+    static void sendMessage(SocketChannel client, String message) throws IOException {
+        if (client.isOpen() && client.isConnected()) {
+            ByteBuffer response = StandardCharsets.UTF_8.encode(message);
+            client.write(response);
+        } else {
+            throw new ClosedChannelException();
+        }
+    }
+
+    // Helper to safely tear down and cancel the selection key
+    private void closeConnection(SelectionKey key) {
+        if (key != null) {
+            key.cancel();
+            try {
+                key.channel().close();
+            } catch (IOException e) {
+                // Ignore double close exceptions
+            }
+        }
+    }
 }

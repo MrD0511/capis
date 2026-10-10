@@ -1,8 +1,7 @@
 package com.capis.Parser;
 
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import com.capis.DataTpes.RespValues.RespArray;
@@ -17,10 +16,18 @@ import java.util.ArrayList;
 public class Parser {
 
     // Main entry point for clients
-    public String[] decode(InputStream input) {
+    public String[] decode(ByteBuffer buffer) {
+        buffer.mark();
         try {
             List<String> result = new ArrayList<>();
-            parseElement(input, result);
+
+            boolean success = parseElement(buffer, result);
+
+            if(!success){
+                buffer.reset();
+                return null;
+            }
+
             return result.toArray(new String[0]);
         } catch (Exception e) {
             e.printStackTrace();
@@ -82,105 +89,157 @@ public class Parser {
     
 
     // Core parsing logic
-    private void parseElement(InputStream input, List<String> accumulator) throws Exception {
-        int typeByte = input.read();
-        if (typeByte == -1) {
-            return;
+    private boolean parseElement(ByteBuffer buffer, List<String> accumulator) throws Exception {
+        if (!buffer.hasRemaining()) {
+            return false;
         }
 
+        buffer.mark();
+
+        int typeByte = buffer.get() & 0xFF;
         char type = (char) typeByte;
 
         switch (type) {
-            case '+': // Simple String
-                accumulator.add(readLine(input));
-                break;
-                
+            case '+': 
             case '-': // Error String
-                accumulator.add(readLine(input));
-                break;
-                
+                String line = readLine(buffer);
+
+                if(line == null){
+                    return false;
+                }
+                accumulator.add(line);
+                return true;
+
             case ':': // Integer
-                String intLine = readLine(input);
-                if (intLine == null || intLine.isEmpty()) {
+                String intLine = readLine(buffer);
+
+                if(intLine == null){
+                    return false;
+                }
+
+                if (intLine.isEmpty()) {
                     throw new Exception("Malformed RESP: Empty integer payload.");
                 }
-                accumulator.add(intLine);
-                break;
                 
+                accumulator.add(intLine);
+                
+                return true;
+
             case '$': // Bulk String
-                String bulkLengthLine = readLine(input);
-                if (bulkLengthLine == null || bulkLengthLine.isEmpty()) {
+                String bulkLengthLine = readLine(buffer);
+                if (bulkLengthLine == null) return false;
+                if (bulkLengthLine.isEmpty()) {
                     throw new Exception("Malformed RESP: Empty bulk length.");
                 }
 
                 long bulkLength = Long.parseLong(bulkLengthLine);
                 if (bulkLength == -1) {
-                    accumulator.add(null); // Explicit Null Bulk String
-                    break;
+                    accumulator.add(null); 
+                    return true;
                 }
 
-                accumulator.add(readBulkString(input, bulkLength));
-                break;
+                String bulkData = readBulkString(buffer, bulkLength);
+                if (bulkData == null) return false;
+                
+                accumulator.add(bulkData);
+                return true;
 
             case '*': // Array (Recursion magic happens here!)
-                String arrayLengthLine = readLine(input);
+                String arrayLengthLine = readLine(buffer);
+                if (arrayLengthLine == null) return false;
+                if (arrayLengthLine.isEmpty()) {
+                    throw new Exception("Malformed RESP: Empty array length.");
+                }
+
                 long arrayLength = Long.parseLong(arrayLengthLine);
                 if (arrayLength == -1) {
-                    accumulator.add(null); // Null Array support
-                    break;
+                    accumulator.add(null);
+                    return true;
                 }
 
-                // Loop and recursively call parseElement for every single element
                 for (int i = 0; i < arrayLength; i++) {
-                    parseElement(input, accumulator);
+                    // If any nested child element is incomplete, fail the whole chain
+                    if (!parseElement(buffer, accumulator)) {
+                        return false;
+                    }
                 }
-
-                break;
+                return true;
 
             default:
                 throw new Exception("Unknown RESP type byte: " + type);
         }
     }
 
-    private String readLine(InputStream input) throws Exception {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        int b;
+    private String readLine(ByteBuffer inputBuffer) throws Exception {
+        inputBuffer.mark();
 
-        while ((b = input.read()) != -1) {
-            if (b == '\r') {
-                int next = input.read();
-                if (next == '\n') {
+        int lineEndPos = -1;
+        int startPos = inputBuffer.position();
+        boolean partialCRfound = false;
+
+        while(inputBuffer.hasRemaining()){
+            byte b = inputBuffer.get();
+            
+            if(b == '\r'){
+                if(inputBuffer.hasRemaining()){
+                    if(inputBuffer.get() == '\n'){
+                        lineEndPos = inputBuffer.position() - 2;
+                        break;
+                    }else{
+                        throw new Exception("Malformed RESP: Expected LF after CR");
+                    }
+                }else{
+                    partialCRfound = true;
                     break;
                 }
-                buffer.write(b);
-                if (next != -1) {
-                    buffer.write(next);
-                }
-            } else {
-                buffer.write(b);
             }
         }
-        return buffer.toString("UTF-8");
+
+        if(lineEndPos == -1){
+            inputBuffer.reset();
+
+            if(inputBuffer.position() == 0 && inputBuffer.limit() == inputBuffer.capacity() - 1 && !partialCRfound){
+                throw new Exception("Malformed RESP: Line too long or no CRLF found.");
+            }
+
+            return null;
+        }
+
+        int currentPos = inputBuffer.position();
+        inputBuffer.reset();
+
+        int length = lineEndPos - startPos;
+        byte[] lineBytes = new byte[length];
+        inputBuffer.get(lineBytes);
+
+        inputBuffer.position(currentPos);
+
+        return new String(lineBytes, StandardCharsets.UTF_8);
     }
 
-    private String readBulkString(InputStream input, long length) throws Exception {
-        byte[] buffer = new byte[(int) length];
-        int bytesRead = 0;
-
-        while (bytesRead < length) {
-            int read = input.read(buffer, bytesRead, (int) length - bytesRead);
-            if (read == -1) {
-                throw new Exception("Unexpected end of stream while reading bulk string.");
-            }
-            bytesRead += read;
+    private String readBulkString(ByteBuffer inputBuffer, long length) throws Exception {
+        if (length < 0) {
+            throw new Exception("Malformed RESP: Negative bulk string length.");
         }
 
-        int r = input.read();
-        int n = input.read();
+        inputBuffer.mark();
+
+        if(inputBuffer.remaining() < length + 2){
+            inputBuffer.reset();
+            return null;
+        }
+
+        byte[] buffer = new byte[(int) length];
+        inputBuffer.get(buffer);
+
+        int r = inputBuffer.get() & 0xFF;
+        int n = inputBuffer.get() & 0xFF;
         if (r != '\r' || n != '\n') {
             throw new Exception("Malformed RESP: Bulk string data not followed by CRLF");
         }
 
-        return new String(buffer, "UTF-8");
+        String resultString = new String(buffer, StandardCharsets.UTF_8);
+
+        return resultString;
     }
 }

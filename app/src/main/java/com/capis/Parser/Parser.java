@@ -23,8 +23,6 @@ public class Parser {
     public String[] decode(ByteBuffer buffer) {
         buffer.mark();
 
-
-
         try {
             byte first = buffer.get(buffer.position());
             if(!isRespValue(first)){
@@ -47,7 +45,9 @@ public class Parser {
                 return null;
             }
 
-            return result.toArray(new String[0]);
+            String[] arrayResult = result.toArray(new String[0]);
+            
+            return arrayResult;
         } catch (Exception e) {
             e.printStackTrace();
         }

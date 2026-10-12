@@ -11,36 +11,32 @@ public class LRUCache<K, V> {
     private Map<K, Node<K, V>> map;
     private int size = 0;
 
-    static final long NO_EXPIRY = Long.MAX_VALUE;
+    static final long NO_EXPIRY = -1L;
 
     public LRUCache(int capacity) {
+        if (capacity <= 0) {
+            throw new IllegalArgumentException(
+                "Capacity must be greater than zero"
+            );
+        }
         this.capacity = capacity;
         this.list = new DoublyLinkedList<>();
         this.map = new HashMap<>();
     }
 
     public V get(K key){
-        if(!map.containsKey(key)) return null;
-
-        if(System.currentTimeMillis() > map.get(key).expiryAtMillis) {
-            Node<K, V> expiredNode = map.get(key);
-
-            this.list.remove(expiredNode);
-
-            map.remove(key);
-
-            size--;
-
+        Node<K, V> node = map.get(key);
+        
+        if(node == null || removeIfExpired(key, node)) {
             return null;
         }
 
-        Node<K, V> node = map.get(key);
         this.list.moveToFront(node);
         return node.value;
     }
 
     public void put(K key, V value) {
-        putInternal(key, value, System.currentTimeMillis() + 24 * 60 * 60 * 1000);
+        putInternal(key, value, NO_EXPIRY);
     }
 
     public void put(K key, V value, long expiryAtMillis) {
@@ -49,6 +45,7 @@ public class LRUCache<K, V> {
 
     private void putInternal(K key, V value, long expiryAtMillis) {
         Node<K, V> existingNode = map.get(key);
+
         if(existingNode != null){
             existingNode.value = value;
             existingNode.expiryAtMillis = expiryAtMillis;
@@ -82,11 +79,9 @@ public class LRUCache<K, V> {
     }
 
     public boolean containsKey(K key) {
-        if(map.containsKey(key) && System.currentTimeMillis() <= map.get(key).expiryAtMillis) {
-            return true;
-        }
-        
-        return false;
+        Node<K, V> node = map.get(key);
+
+        return node != null && !removeIfExpired(key, node);
     }
 
     public Set<K> keys() {
@@ -95,7 +90,7 @@ public class LRUCache<K, V> {
         long now = System.currentTimeMillis();
 
         for (Node<K, V> node : list.nodes()) {
-            if (now <= node.expiryAtMillis) {
+            if (!isExpired(node, now)) {
                 keys.add(node.key);
             }
         }
@@ -110,12 +105,21 @@ public class LRUCache<K, V> {
     public void clear() {
         map.clear();
         list.clear();
+        size = 0;
     }
 
     public boolean expire(K key, long ttlMillis){
         Node<K, V> node = map.get(key);
-        if(node == null || System.currentTimeMillis() > node.expiryAtMillis) {
+        
+        if(node == null || removeIfExpired(key, node)) {
             return false;
+        }
+
+        if (ttlMillis <= 0) {
+            list.remove(node);
+            map.remove(key);
+            size--;
+            return true;
         }
 
         node.expiryAtMillis = System.currentTimeMillis() + ttlMillis;
@@ -125,7 +129,8 @@ public class LRUCache<K, V> {
 
     public Long ttlMillis(K key){
         Node<K, V> node = map.get(key);
-        if(node == null) {
+        
+        if(node == null || removeIfExpired(key, node)) {
             return null;
         }
 
@@ -141,12 +146,26 @@ public class LRUCache<K, V> {
 
     public boolean persist(K key){
         Node<K, V> node = map.get(key);
-        if(node == null) {
+        if(node == null || removeIfExpired(key, node)) {
             return false;
         }
 
         node.expiryAtMillis = NO_EXPIRY;
         list.moveToFront(node);
         return true;
+    }
+
+    private boolean isExpired(Node<K, V> node, long now) {
+        return node.expiryAtMillis != NO_EXPIRY && now >= node.expiryAtMillis;
+    }
+
+    private boolean removeIfExpired(K key, Node<K, V> node) {
+        if (isExpired(node, System.currentTimeMillis())) {
+            this.list.remove(node);
+            map.remove(key);
+            size--;
+            return true;
+        }
+        return false;
     }
 }

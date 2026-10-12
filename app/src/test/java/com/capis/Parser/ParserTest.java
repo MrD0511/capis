@@ -123,6 +123,15 @@ class ParserTest {
         );
     }
 
+    @Test
+    void parsesNullContainingArray() {
+        String input = "*2\r\n$-1\r\n$-1\r\n";
+
+        String[] result = parser.decode(toBuffer(input));
+
+        assertArrayEquals(new String[]{null, null}, result);
+    }
+
     private ByteBuffer toBuffer(String input) {
         return ByteBuffer.wrap(
                 input.getBytes(StandardCharsets.UTF_8)

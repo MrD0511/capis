@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 
-public class LRUCache<K, V> {
+public class LRUCache<K, V> implements Cache<K, V> {
     private DoublyLinkedList<K, V> list;
     private long capacity;
     private Map<K, Node<K, V>> map;
@@ -126,13 +126,11 @@ public class LRUCache<K, V> {
         }
 
         if (ttlMillis <= 0) {
-            list.remove(node);
-            map.remove(key);
+            remove(key);
             return true;
         }
 
         node.expiryAtMillis = System.currentTimeMillis() + ttlMillis;
-        list.moveToFront(node);
         return true;
     }
 
@@ -164,7 +162,6 @@ public class LRUCache<K, V> {
         }
 
         node.expiryAtMillis = NO_EXPIRY;
-        list.moveToFront(node);
         return true;
     }
 

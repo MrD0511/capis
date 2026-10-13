@@ -1,15 +1,15 @@
 package com.capis.entities;
 
-import java.util.Set;
+// import java.util.Set;
 
 import com.capis.DataTpes.Core.StringValue;
 import com.capis.DataTpes.Core.Value;
 
 public class KeyValueStore {
-    private LRUCache<String, Value<?>> cache;
+    private LFUCache<String, Value<?>> cache;
 
     public KeyValueStore(int capacity) {
-        this.cache = new LRUCache<>(capacity);
+        this.cache = new LFUCache<>(capacity);
     }
 
     public Value<?> get(String key) {
@@ -35,7 +35,7 @@ public class KeyValueStore {
     public boolean expire(String key, long ttlMillis) { return cache.expire(key, ttlMillis); }
     public Long ttlMillis(String key)                 { return cache.ttlMillis(key); }
     public boolean persist(String key)                { return cache.persist(key); }
-    public Set<String> keys()                         { return cache.keys(); }
+    // public Set<String> keys()                         { return cache.keys(); }
     public int size()                                 { return cache.size(); }
     public void clear()                               { cache.clear(); }
 

@@ -59,4 +59,7 @@ class DoublyLinkedList<K, V> {
         tail.prev = head;
     }
 
+    public boolean isEmpty() {
+        return head.next == tail;
+    }
 }

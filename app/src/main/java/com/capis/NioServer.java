@@ -34,7 +34,7 @@ public class NioServer {
         while (true) {
             selector.select();
 
-            this.capisCore.getKeyValueStore().purgeExpiredEntries(); // Purge expired entries before processing new events
+            this.capisCore.getKeyValueStore().purgeExpiredEntries(); // Purges expired entries before processing new events
 
             Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
 

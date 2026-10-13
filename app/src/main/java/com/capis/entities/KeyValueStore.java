@@ -39,7 +39,7 @@ public class KeyValueStore {
     public int size()                                 { return cache.size(); }
     public void clear()                               { cache.clear(); }
 
-    public synchronized Value<?> increment(String key){
+    public Value<?> increment(String key){
         Value<?> value = cache.get(key);
 
         if (value == null) {
@@ -52,10 +52,10 @@ public class KeyValueStore {
             throw new IllegalArgumentException("Value is not a string");
         }
 
-        long val;
+        int val;
         
         try {
-            val = Long.parseLong(stringValue.getValue());
+            val = Integer.parseInt(stringValue.getValue());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value is not a valid integer");
         }
@@ -67,7 +67,7 @@ public class KeyValueStore {
         return stringValue;
     }
 
-    public synchronized Value<?> decrement(String key){
+    public Value<?> decrement(String key){
         Value<?> value = cache.get(key);
 
         if (value == null) {
@@ -80,10 +80,10 @@ public class KeyValueStore {
             throw new IllegalArgumentException("Value is not a string");
         }
 
-        long val;
+        int val;
         
         try {
-            val = Long.parseLong(stringValue.getValue());
+            val = Integer.parseInt(stringValue.getValue());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value is not a valid integer");
         }
@@ -95,5 +95,7 @@ public class KeyValueStore {
         return stringValue;
     }
 
-
+    public void purgeExpiredEntries() {
+        cache.purgeExpiredEntries();
+    }
 }

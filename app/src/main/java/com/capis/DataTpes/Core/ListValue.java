@@ -15,6 +15,6 @@ public final class ListValue implements Value<List<String>> {
     }
 
     public void setValue(List<String> value) {
-        this.value = value;
+        this.value = new ArrayList<>(value);
     }
 }

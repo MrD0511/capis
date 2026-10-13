@@ -1,5 +1,7 @@
 package com.capis.Commands;
 
+import java.nio.charset.StandardCharsets;
+
 import com.capis.DataTpes.Core.StringValue;
 import com.capis.DataTpes.Core.Value;
 import com.capis.DataTpes.RespValues.RespErr;
@@ -41,6 +43,6 @@ public class AppendCommand implements Command {
 
         stringValue.setValue(appended);
 
-        return new RespInteger(appended.length());
+        return new RespInteger(appended.getBytes(StandardCharsets.UTF_8).length);
     }
 }

@@ -44,7 +44,8 @@ public class HGETALLCommand implements Command {
         List<RespValue> result = new ArrayList<>();
 
         for(Map.Entry<String, String> entry: hash.getValue().entrySet()){
-            result.add(new RespArray(List.of(new RespBulkString(entry.getKey()), new RespBulkString(entry.getValue()))));
+            result.add(new RespBulkString(entry.getKey()));
+            result.add(new RespBulkString(entry.getValue()));
         }
 
         return new RespArray(result);

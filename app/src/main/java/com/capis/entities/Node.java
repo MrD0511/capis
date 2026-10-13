@@ -10,7 +10,7 @@ class Node<K, V> {
     Node(K key, V value) { // Default expiry time of 1 hour
         this.key = key;
         this.value = value;
-        this.expiryAtMillis = System.currentTimeMillis() + 24 * 60 * 60 * 1000; // 1 hour
+        this.expiryAtMillis = -1L; // No expiry by default
     }
 
     Node(K key, V value, long expiryAtMillis) {

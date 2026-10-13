@@ -23,7 +23,7 @@ public class EXPIRECommand implements Command {
     @Override 
     public RespValue execute(String[] args) {
         if(args == null || args.length != 3){
-            return null; // Placeholder for error response
+            return new RespErr("ERR", "wrong number of arguments for '" + name + "' command");
         }
 
         int seconds;
@@ -31,7 +31,7 @@ public class EXPIRECommand implements Command {
         try {
             seconds = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
-            return new RespErr("ERR value is not an integer or out of range", name);
+            return new RespErr("ERR", "value is not an integer or out of range");
         }
 
         if(seconds < 0) {

@@ -1,6 +1,6 @@
 package com.capis;
 
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 import com.capis.Commands.AppendCommand;
 import com.capis.Commands.CommandHandler;
@@ -41,14 +41,14 @@ import com.capis.Commands.TypeCommand;
 import com.capis.Commands.ZADDCommand;
 import com.capis.Commands.ZRANGECommand;
 import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.Network.ClientState;
 import com.capis.Parser.Parser;
 import com.capis.entities.KeyValueStore;
 
 public class CapisCore {
-    private KeyValueStore keyValueStore;
-    private Parser parser;
-    private CommandHandler commandHandler;
+    private final KeyValueStore keyValueStore;
+    private final Parser parser;
+    private final CommandHandler commandHandler;
 
     public CapisCore(int capacity){
         this.keyValueStore = new KeyValueStore(capacity);
@@ -94,21 +94,27 @@ public class CapisCore {
         this.commandHandler.registerCommand(new INCRBYFLOATCommand(this.keyValueStore));
     }
 
-    public String run(InputStream input) throws Exception{
-        String[] command = parser.decode(input);
+    public String handle(ByteBuffer buffer, ClientState clientState) throws Exception {
+        // Decode the command from the InputStream
 
-        if (command == null) {
-            return parser.encode(new RespErr("ERR", "Failed to decode command"));
+        StringBuilder output = new StringBuilder();
+        while(buffer.hasRemaining()){
+            String[] command = parser.decode(buffer);
+            if(command == null){
+                break;
+            }
+
+            if(command.length == 0){
+                output.append(parser.encode(new RespErr("ERR", "empty command")));
+            }
+
+            output.append(parser.encode(commandHandler.execute(command, clientState)));
         }
 
-        if (command.length == 0) {
-            return parser.encode(new RespErr("ERR", "empty command"));
-        }
+        return output.toString();
+    }
 
-        RespValue respVal = commandHandler.execute(command);
-
-        String response = parser.encode(respVal);
-
-        return response;
+    public KeyValueStore getKeyValueStore() {
+        return keyValueStore;
     }
 }

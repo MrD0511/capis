@@ -2,7 +2,7 @@ package com.capis;
 
 public class App {
     public static void main(String[] args) throws Exception {
-        CapisCore capisCore = new CapisCore(1000);
+        CapisCore capisCore = new CapisCore(10000);
         NioServer server = new NioServer(6379, capisCore);
         
         printBanner();
@@ -30,7 +30,7 @@ public class App {
         System.out.println();
         System.out.println();
 
-        System.out.println("CAPIS v0.1.0 - A Simple In-Memory Key-Value Store");
+        System.out.println("CAPIS v0.1.0 - A Redis like In-Memory Key-Value Store");
         System.out.println("Listening on port 6379  ·  Ready to accept connections");
 
         System.out.println();

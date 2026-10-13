@@ -25,7 +25,7 @@ public class HSETCommand implements Command {
 
     @Override
     public RespValue execute(String[] args) {
-        if(args == null || args.length % 2 != 0) {
+        if(args == null || args.length < 4 || args.length % 2 != 0) {
             return new RespErr("ERR", "wrong number of arguments for '" + name + "' command");
         }
 

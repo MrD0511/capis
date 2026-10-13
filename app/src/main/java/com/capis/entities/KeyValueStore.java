@@ -52,10 +52,10 @@ public class KeyValueStore {
             throw new IllegalArgumentException("Value is not a string");
         }
 
-        long val;
+        int val;
         
         try {
-            val = Long.parseLong(stringValue.getValue());
+            val = Integer.parseInt(stringValue.getValue());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value is not a valid integer");
         }
@@ -80,10 +80,10 @@ public class KeyValueStore {
             throw new IllegalArgumentException("Value is not a string");
         }
 
-        long val;
+        int val;
         
         try {
-            val = Long.parseLong(stringValue.getValue());
+            val = Integer.parseInt(stringValue.getValue());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value is not a valid integer");
         }
@@ -95,5 +95,7 @@ public class KeyValueStore {
         return stringValue;
     }
 
-
+    public void purgeExpiredEntries() {
+        cache.purgeExpiredEntries();
+    }
 }

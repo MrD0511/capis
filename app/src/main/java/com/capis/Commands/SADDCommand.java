@@ -50,11 +50,13 @@ public class SADDCommand implements Command {
 
         Set<String> set = setValue.getValue();
 
+        int addedCount = 0;
         for (int i = 2; i < args.length; i++) {
-            set.add(args[i]);
+            if (set.add(args[i])) {
+                addedCount++;
+            }
         }
 
-        return new RespInteger(set.size());
-
+        return new RespInteger(addedCount);
     }
 }

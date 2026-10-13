@@ -113,4 +113,8 @@ public class CapisCore {
 
         return output.toString();
     }
+
+    public KeyValueStore getKeyValueStore() {
+        return keyValueStore;
+    }
 }

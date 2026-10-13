@@ -3,13 +3,14 @@ package com.capis.entities;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 
 public class LRUCache<K, V> {
     private DoublyLinkedList<K, V> list;
     private long capacity;
     private Map<K, Node<K, V>> map;
-    private int size = 0;
+    private int purgeLimit = 100;
 
     static final long NO_EXPIRY = -1L;
 
@@ -22,6 +23,16 @@ public class LRUCache<K, V> {
         this.capacity = capacity;
         this.list = new DoublyLinkedList<>();
         this.map = new HashMap<>();
+    }
+
+    public LRUCache(int capacity, int purgeLimit) {
+        this(capacity);
+        if (purgeLimit <= 0) {
+            throw new IllegalArgumentException(
+                "Purge limit must be greater than zero"
+            );
+        }
+        this.purgeLimit = purgeLimit;
     }
 
     public V get(K key){
@@ -54,7 +65,6 @@ public class LRUCache<K, V> {
             while(map.size() >= capacity){
                 Node<K, V> lruNode = this.list.removeFromEnd();
                 if (lruNode != null) {
-                    size--;
                     map.remove(lruNode.key);
                 }
             }
@@ -63,19 +73,19 @@ public class LRUCache<K, V> {
             this.list.addToFront(newNode);
 
             map.put(key, newNode);
-            size++;
         }
     }
 
     public V remove(K key){
         Node<K, V> node = map.get(key);
-        if(node != null){
-            this.list.remove(node);
-            size--;
-            map.remove(key);
-            return node.value;
+
+        if(node == null || removeIfExpired(key, node)) {
+            return null;
         }
-        return null;
+
+        this.list.remove(node);
+        map.remove(key);
+        return node.value;
     }
 
     public boolean containsKey(K key) {
@@ -99,13 +109,13 @@ public class LRUCache<K, V> {
     }
 
     public int size() {
-        return this.size;
+        purgeExpiredEntries(); 
+        return this.map.size();
     }
 
     public void clear() {
         map.clear();
         list.clear();
-        size = 0;
     }
 
     public boolean expire(K key, long ttlMillis){
@@ -118,7 +128,6 @@ public class LRUCache<K, V> {
         if (ttlMillis <= 0) {
             list.remove(node);
             map.remove(key);
-            size--;
             return true;
         }
 
@@ -150,6 +159,10 @@ public class LRUCache<K, V> {
             return false;
         }
 
+        if(node.expiryAtMillis == NO_EXPIRY) {
+            return false;
+        }
+
         node.expiryAtMillis = NO_EXPIRY;
         list.moveToFront(node);
         return true;
@@ -163,9 +176,28 @@ public class LRUCache<K, V> {
         if (isExpired(node, System.currentTimeMillis())) {
             this.list.remove(node);
             map.remove(key);
-            size--;
             return true;
         }
         return false;
+    }
+
+    public void purgeExpiredEntries() {
+        if (map.isEmpty()) {
+            return;
+        }
+
+        int checkedCount = 0;
+        Iterator<Map.Entry<K, Node<K, V>>> iterator = map.entrySet().iterator();
+
+        while(iterator.hasNext() && checkedCount < purgeLimit) {
+            Map.Entry<K, Node<K, V>> entry = iterator.next();
+            Node<K, V> node = entry.getValue();
+            checkedCount++;
+
+            if (isExpired(node, System.currentTimeMillis())) {
+                this.list.remove(node);
+                iterator.remove();
+            }
+        }
     }
 }

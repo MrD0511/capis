@@ -1,15 +1,6 @@
 # CAPIS
 
-```
-   ██████╗ █████╗ ██████╗ ██╗███████╗
-  ██╔════╝██╔══██╗██╔══██╗██║██╔════╝
-  ██║     ███████║██████╔╝██║███████╗
-  ██║     ██╔══██║██╔═══╝ ██║╚════██║
-  ╚██████╗██║  ██║██║     ██║███████║
-   ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝
-
-CAPIS v0.1.0 - A Redis like In-Memory Key-Value Store
-```
+![CAPIS Logo](assets/capis_logo_animation.gif)
 
 CAPIS is my from-scratch Redis-like in-memory key-value store written in Java. It speaks a subset
 of the Redis Serialization Protocol (RESP) over TCP and listens on port `6379` by default.

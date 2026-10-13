@@ -118,28 +118,34 @@ valkey-benchmark -p 6379 -t ping_inline,ping_mbulk,set,get,incr,lpush,rpush,lpop
 - RAM: 11 GiB
 - OS: Arch Linux (Linux 7.2.9-zen1-1-zen)
 - JVM: OpenJDK 27
-- Benchmark tool: `valkey-benchmark 9.1.2`
+- Benchmark tool: `redis-benchmark`
 
 ### Results
 
-| Command | Requests/sec | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `PING` (inline) | 29664.79 | 1.237 | 0.703 | 3.639 | 6.711 |
-| `PING` (multibulk) | 40650.41 | 0.770 | 0.575 | 2.023 | 3.031 |
-| `SET` | 47778.31 | 0.601 | 0.543 | 1.111 | 1.879 |
-| `GET` | 43478.26 | 0.676 | 0.567 | 1.503 | 2.807 |
-| `INCR` | 30441.40 | 1.065 | 0.735 | 2.591 | 4.159 |
-| `LPUSH` | 20108.59 | 2.224 | 1.927 | 5.047 | 8.103 |
-| `RPUSH` | 26588.67 | 1.263 | 0.935 | 2.799 | 5.023 |
-| `LPOP` | 11752.26 | 4.194 | 3.439 | 8.639 | 12.743 |
-| `RPOP` | 38051.75 | 0.813 | 0.647 | 1.839 | 2.687 |
-| `SADD` | 41893.59 | 0.710 | 0.623 | 1.375 | 2.007 |
-| `HSET` | 38197.10 | 0.810 | 0.647 | 1.823 | 2.607 |
-| `ZADD` | 38880.25 | 0.786 | 0.655 | 1.655 | 2.559 |
+| Command | Requests/sec | p50 (ms) |
+|---|---:|---:|
+| `PING` (inline) | 62150.41 | 0.375 |
+| `PING` (multibulk) | 62814.07 | 0.375 |
+| `SET` | 66755.67 | 0.367 |
+| `GET` | 60496.07 | 0.375 |
+| `INCR` | 63938.62 |  0.375 |
+| `LPUSH` | 20383.20 | 2.375 |
+| `RPUSH` | 64850.84 | 0.367 |
+| `LPOP` | 13933.40 | 3.471 |
+| `RPOP` | 69492.70 | 0.359 |
+| `SADD` | 65061.81 | 0.367 |
+| `HSET` | 61124.69 | 0.375 |
+| `ZADD` | 64308.68 | 0.367 |
+| `MSET` (10 keys) | 67114.09 | 0.367 |
+| `MGET` (10 keys) | 65274.15 | 0.383 |
+| `LRANGE` (100 elements) | 42662.11 | 0.591 | 
+| `LRANGE` (300 elements) | 19904.46 | 1.191 |
+| `LRANGE` (500 elements) | 13871.55 | 1.703 |
+| `LRANGE` (600 elements) | 12193.63 | 1.983 |
 
 Notes:
 
-- `valkey-benchmark`/`redis-benchmark` prints `WARNING: Could not fetch server CONFIG` because CAPIS
+- `redis-benchmark` prints `WARNING: Could not fetch server CONFIG` because CAPIS
   has no `CONFIG` command. The benchmark still runs fine with its defaults.
 - `LPOP` is the slowest here because the client continually refills the list, so every pop walks the
   list head and runs the lazy-expiry check.

@@ -18,11 +18,13 @@ public class NioServer {
     int port = 6379; // Default Redis port
     final private CapisCore capisCore;
     final private Selector selector;
+    final private MaintainanceService maintainanceService;
 
-    public NioServer(int port, CapisCore capisCore) throws IOException {
+    public NioServer(int port, CapisCore capisCore, MaintainanceService maintainanceService) throws IOException {
         this.port = port;
         this.capisCore = capisCore;
         this.selector = Selector.open();
+        this.maintainanceService = maintainanceService;
     }
 
     public void start() throws Exception {
@@ -32,9 +34,9 @@ public class NioServer {
         server.register(selector, SelectionKey.OP_ACCEPT);
 
         while (true) {
-            selector.select();
+            this.maintainanceService.maintain();
 
-            this.capisCore.getKeyValueStore().purgeExpiredEntries(); // Purges expired entries before processing new events
+            selector.select(10);
 
             Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
 

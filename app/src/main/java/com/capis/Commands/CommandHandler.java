@@ -1,9 +1,7 @@
 package com.capis.Commands;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.capis.DataTpes.RespValues.RespArray;
 import com.capis.DataTpes.RespValues.RespErr;
@@ -13,15 +11,11 @@ import com.capis.Network.ClientState;
 
 
 public class CommandHandler {
-    Map<String, Command> commandMap;
+    CommandRegistry commandRegistery;
     TransactionManager transactionManager = new TransactionManager();
-
-    public CommandHandler() {
-        this.commandMap = new HashMap<>();
-    }
-
-    public void registerCommand(Command command) {
-        commandMap.put(command.getName(), command);
+    
+    public CommandHandler(CommandRegistry commandRegistery) {
+        this.commandRegistery = commandRegistery;
     }
 
     public RespValue execute(String[] args, ClientState clientState) {
@@ -31,7 +25,7 @@ public class CommandHandler {
 
         String commandName = args[0].toUpperCase();
 
-        Command command = commandMap.get(commandName);
+        Command command = commandRegistery.get(commandName);
 
         switch (commandName) {
             case "MULTI":
@@ -90,7 +84,7 @@ public class CommandHandler {
 
         String commandName = args[0].toUpperCase();
 
-        Command command = commandMap.get(commandName);
+        Command command = commandRegistery.get(commandName);
 
         if (command == null) {
             return new RespErr("ERR", "Unknown command '" + commandName + "'");

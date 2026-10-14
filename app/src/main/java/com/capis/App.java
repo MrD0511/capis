@@ -1,11 +1,16 @@
 package com.capis;
 
+
 public class App {
     public static void main(String[] args) throws Exception {
-        CapisCore capisCore = new CapisCore(10000);
-        NioServer server = new NioServer(6379, capisCore);
+
+        AppConfig appConfig = ConfigLoader.load(args);
+
+        Bootstrap bootstrap = new Bootstrap(appConfig);
         
-        printBanner();
+        NioServer server = bootstrap.build();
+        
+        printBanner(appConfig.getPort(), appConfig.getEvictionPolicy().name(), appConfig.getCapacity(), appConfig.getPurgeLimit());
 
         try {
             server.start();
@@ -15,7 +20,7 @@ public class App {
         }
     }
 
-    private static void printBanner(){
+    private static void printBanner(int port, String evictionPolicy, int capacity, int purgeLimit) {
         System.out.println();
         System.out.println();
         System.out.println();
@@ -31,7 +36,8 @@ public class App {
         System.out.println();
 
         System.out.println("CAPIS v0.1.0 - A Redis like In-Memory Key-Value Store");
-        System.out.println("Listening on port 6379  ·  Ready to accept connections");
+        System.out.println("Listening on port " + port + "  ·  Ready to accept connections");
+        System.out.println("Using " + evictionPolicy + " eviction policy with capacity " + capacity + " and purge limit " + purgeLimit);
 
         System.out.println();
         System.out.println();

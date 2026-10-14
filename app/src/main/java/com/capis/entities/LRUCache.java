@@ -1,16 +1,18 @@
 package com.capis.entities;
 
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 
-public class LRUCache<K, V> {
+public class LRUCache<K, V> implements Cache<K, V> {
     private DoublyLinkedList<K, V> list;
     private long capacity;
     private Map<K, Node<K, V>> map;
     private int purgeLimit = 100;
+    private RandomizedList<Node<K, V>> randomList;
+    private Random random;
 
     static final long NO_EXPIRY = -1L;
 
@@ -23,6 +25,8 @@ public class LRUCache<K, V> {
         this.capacity = capacity;
         this.list = new DoublyLinkedList<>();
         this.map = new HashMap<>();
+        this.random = new Random();
+        this.randomList = new RandomizedList<>();
     }
 
     public LRUCache(int capacity, int purgeLimit) {
@@ -38,7 +42,7 @@ public class LRUCache<K, V> {
     public V get(K key){
         Node<K, V> node = map.get(key);
         
-        if(node == null || removeIfExpired(key, node)) {
+        if(node == null || removeIfExpired(node)) {
             return null;
         }
 
@@ -72,6 +76,8 @@ public class LRUCache<K, V> {
             Node<K, V> newNode = new Node<>(key, value, expiryAtMillis);
             this.list.addToFront(newNode);
 
+            randomList.add(newNode);
+
             map.put(key, newNode);
         }
     }
@@ -79,28 +85,28 @@ public class LRUCache<K, V> {
     public V remove(K key){
         Node<K, V> node = map.get(key);
 
-        if(node == null || removeIfExpired(key, node)) {
+        if(node == null || removeIfExpired(node)) {
             return null;
         }
 
         this.list.remove(node);
         map.remove(key);
+        randomList.remove(node);
+
         return node.value;
     }
 
     public boolean containsKey(K key) {
         Node<K, V> node = map.get(key);
 
-        return node != null && !removeIfExpired(key, node);
+        return node != null && !removeIfExpired(node);
     }
 
     public Set<K> keys() {
         Set<K> keys = new LinkedHashSet<>();
 
-        long now = System.currentTimeMillis();
-
         for (Node<K, V> node : list.nodes()) {
-            if (!isExpired(node, now)) {
+            if (!removeIfExpired(node)) {
                 keys.add(node.key);
             }
         }
@@ -116,30 +122,29 @@ public class LRUCache<K, V> {
     public void clear() {
         map.clear();
         list.clear();
+        randomList.clear();
     }
 
     public boolean expire(K key, long ttlMillis){
         Node<K, V> node = map.get(key);
         
-        if(node == null || removeIfExpired(key, node)) {
+        if(node == null || removeIfExpired(node)) {
             return false;
         }
 
         if (ttlMillis <= 0) {
-            list.remove(node);
-            map.remove(key);
+            remove(key);
             return true;
         }
 
         node.expiryAtMillis = System.currentTimeMillis() + ttlMillis;
-        list.moveToFront(node);
         return true;
     }
 
     public Long ttlMillis(K key){
         Node<K, V> node = map.get(key);
         
-        if(node == null || removeIfExpired(key, node)) {
+        if(node == null || removeIfExpired(node)) {
             return null;
         }
 
@@ -155,7 +160,7 @@ public class LRUCache<K, V> {
 
     public boolean persist(K key){
         Node<K, V> node = map.get(key);
-        if(node == null || removeIfExpired(key, node)) {
+        if(node == null || removeIfExpired(node)) {
             return false;
         }
 
@@ -164,7 +169,6 @@ public class LRUCache<K, V> {
         }
 
         node.expiryAtMillis = NO_EXPIRY;
-        list.moveToFront(node);
         return true;
     }
 
@@ -172,12 +176,15 @@ public class LRUCache<K, V> {
         return node.expiryAtMillis != NO_EXPIRY && now >= node.expiryAtMillis;
     }
 
-    private boolean removeIfExpired(K key, Node<K, V> node) {
+    private boolean removeIfExpired(Node<K, V> node) {
         if (isExpired(node, System.currentTimeMillis())) {
             this.list.remove(node);
-            map.remove(key);
+            map.remove(node.key);
+            randomList.remove(node);
+
             return true;
         }
+
         return false;
     }
 
@@ -187,16 +194,17 @@ public class LRUCache<K, V> {
         }
 
         int checkedCount = 0;
-        Iterator<Map.Entry<K, Node<K, V>>> iterator = map.entrySet().iterator();
+        long now = System.currentTimeMillis();
 
-        while(iterator.hasNext() && checkedCount < purgeLimit) {
-            Map.Entry<K, Node<K, V>> entry = iterator.next();
-            Node<K, V> node = entry.getValue();
+        while(checkedCount < purgeLimit && !randomList.isEmpty()) {
+            int randomIndex = random.nextInt(randomList.size());
+            Node<K, V> node = randomList.get(randomIndex);
             checkedCount++;
 
-            if (isExpired(node, System.currentTimeMillis())) {
+            if (isExpired(node, now)) {
                 this.list.remove(node);
-                iterator.remove();
+                map.remove(node.key);
+                randomList.remove(node);
             }
         }
     }

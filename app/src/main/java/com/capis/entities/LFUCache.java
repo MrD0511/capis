@@ -29,6 +29,16 @@ public class LFUCache<K, V> implements Cache<K, V> {
         this.frequencyMap = new HashMap<>();
     }
 
+    public LFUCache(int capacity, int purgeLimit) {
+        this(capacity);
+        if(purgeLimit <= 0) {
+            throw new IllegalArgumentException(
+                "Purge limit must be greater than zero"
+            );
+        }
+        this.purgeLimit = purgeLimit;
+    }
+
     public V get(K key){
         Node<K, V> node = map.get(key);
 

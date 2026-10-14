@@ -1,15 +1,13 @@
 package com.capis.entities;
 
-// import java.util.Set;
-
 import com.capis.DataTpes.Core.StringValue;
 import com.capis.DataTpes.Core.Value;
 
 public class KeyValueStore {
-    private LFUCache<String, Value<?>> cache;
+    private Cache<String, Value<?>> cache;
 
-    public KeyValueStore(int capacity) {
-        this.cache = new LFUCache<>(capacity);
+    public KeyValueStore(Cache<String, Value<?>> cache) {
+        this.cache = cache;
     }
 
     public Value<?> get(String key) {

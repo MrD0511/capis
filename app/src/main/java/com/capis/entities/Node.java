@@ -1,6 +1,6 @@
 package com.capis.entities;
 
-class Node<K, V> {
+public class Node<K, V> {
     K key;
     V value;
     long expiryAtMillis; // Optional: For time-based eviction, if needed

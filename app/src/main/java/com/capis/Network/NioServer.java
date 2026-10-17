@@ -1,4 +1,4 @@
-package com.capis;
+package com.capis.Network;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -9,9 +9,12 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.Iterator;
+import java.util.Queue;
 
-import com.capis.Network.ClientState;
+import com.capis.CapisCore;
+import com.capis.MaintainanceService;
 
 public class NioServer {
 
@@ -19,6 +22,8 @@ public class NioServer {
     final private CapisCore capisCore;
     final private Selector selector;
     final private MaintainanceService maintainanceService;
+    final private Queue<Task> pendingTasks = new ArrayDeque<>();
+    final private int TASKS_EXECUTION_LIMIT = 100; // Arbitrary limit to prevent memory exhaustion
 
     public NioServer(int port, CapisCore capisCore, MaintainanceService maintainanceService) throws IOException {
         this.port = port;
@@ -44,24 +49,16 @@ public class NioServer {
                 SelectionKey key = iterator.next();
                 iterator.remove();
 
-                // Skip keys that are no longer valid
-                if (!key.isValid()) {
-                    continue;
-                }
+                if (!key.isValid()) continue;
 
-                try {
-                    if (key.isAcceptable()) {
-                        acceptClient(server);
-                    } else if (key.isReadable()) {
-                        read(key);
-                    }
-                } catch (Exception e) {
-                    // Catch-all block for the loop to keep the server alive 
-                    // if an unhandled edge-case slips out
-                    System.err.println("Error processing key: " + e.getMessage());
-                    closeConnection(key);
+                if (key.isAcceptable()) {
+                    acceptClient(server);
+                } else if (key.isReadable()) {
+                    read(key);
                 }
             }
+
+            executePendingTasks();
         }
     }
 
@@ -91,15 +88,9 @@ public class NioServer {
                 return;
             }
 
-            buffer.flip();
+            Task task = new Task(client, clientState);
+            pendingTasks.add(task);
             
-            String response = this.capisCore.handle(buffer, clientState);
-            
-            // Clear the buffer immediately after handling so it's clean for the next cycle
-            buffer.compact();
-
-            sendMessage(client, response);
-
         } catch (IOException e) {
             // Catches standard connection resets (e.g. client dropped forcefully)
             System.out.println("Client disconnected forcefully (IOException).");
@@ -114,6 +105,45 @@ public class NioServer {
                 sendMessage(client, "-ERR Internal server error\r\n");
             } catch (IOException ioException) {
                 closeConnection(key);
+            }
+        }
+    }
+
+    private void executePendingTasks(){
+        int tasksExecuted = 0;
+        while (tasksExecuted < TASKS_EXECUTION_LIMIT && !pendingTasks.isEmpty()) {
+            Task task = pendingTasks.poll();
+            if (task != null) {
+                executePendingTask(task);
+                tasksExecuted++;
+            }
+        }
+    }
+
+    private void executePendingTask(Task task) {
+        SocketChannel client = task.getClient();
+        ClientState clientState = task.getClientState();
+        ByteBuffer buffer = clientState.getInputBuffer();
+
+        try {
+
+            buffer.flip(); 
+            // Process the command using CapisCore
+            String response = capisCore.handle(buffer, clientState);
+
+            buffer.compact();
+
+            sendMessage(client, response);
+        } catch (IOException e) {
+            System.err.println("Failed to send response to client: " + e.getMessage());
+            closeConnection(client.keyFor(selector));
+        }catch (Exception e) {
+            System.err.println("Error processing client command: " + e.getMessage());
+            e.printStackTrace();
+            try {
+                sendMessage(client, "-ERR Internal server error\r\n");
+            } catch (IOException ioException) {
+                closeConnection(client.keyFor(selector));
             }
         }
     }

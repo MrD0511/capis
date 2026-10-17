@@ -1,10 +1,11 @@
 package com.capis;
 
+import com.capis.Network.NioServer;
 
 public class App {
     public static void main(String[] args) throws Exception {
 
-        AppConfig appConfig = ConfigLoader.load(args);
+        AppConfig appConfig = new ConfigLoader().load(args);
 
         Bootstrap bootstrap = new Bootstrap(appConfig);
         

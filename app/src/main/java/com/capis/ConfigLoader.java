@@ -5,8 +5,14 @@ import java.util.Map;
 
 public class ConfigLoader {
 
-    public static AppConfig load(String[] args) {
-        Map<String, String> configMap = parseArgs(args);
+    private Map<String, String> configMap;
+
+    public ConfigLoader() {
+        this.configMap = new HashMap<>();
+    }
+
+    public AppConfig load(String[] args) {
+        Map<String, String> configMap = this.parseArgs(args);
 
         AppConfig.Builder builder = new AppConfig.Builder();
 
@@ -36,9 +42,7 @@ public class ConfigLoader {
         return builder.build();
     }
 
-    private static Map<String, String> parseArgs(String[] args) {
-        Map<String, String> configMap = new HashMap<>();
-
+    private Map<String, String> parseArgs(String[] args) {
         for (String arg : args) {
             if (!arg.startsWith("--")) {
                 throw new IllegalArgumentException(
@@ -57,13 +61,13 @@ public class ConfigLoader {
             String key = arg.substring(2, separator);
             String value = arg.substring(separator + 1);
 
-            if (configMap.putIfAbsent(key, value) != null) {
+            if (this.configMap.putIfAbsent(key, value) != null) {
                 throw new IllegalArgumentException(
                     "Duplicate option: --" + key
                 );
             }
         }
 
-        return configMap;
+        return this.configMap;
     }
 }

@@ -1,14 +1,34 @@
 package com.capis;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import java.util.Properties;
 
 public class ConfigLoader {
 
     private Map<String, String> configMap;
+    private static final String CONFIG_FILE_PATH = "config.properties";
 
     public ConfigLoader() {
         this.configMap = new HashMap<>();
+        loadFromFile();
+    }
+
+    public void loadFromFile() {
+
+        Properties props = new Properties();
+
+        try (FileInputStream input = new FileInputStream(CONFIG_FILE_PATH)) {
+            props.load(input);
+            for (String key : props.stringPropertyNames()) {
+                this.configMap.put(key, props.getProperty(key));
+            }
+        } catch (IOException e) {
+            // Ignore if config file is not present
+        }
     }
 
     public AppConfig load(String[] args) {

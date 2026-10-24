@@ -1,6 +1,8 @@
 package com.capis.Commands;
 
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 
 import com.capis.DataTpes.Core.ListValue;
@@ -63,12 +65,14 @@ public class LPOPCommand implements Command {
                 : new RespArray(List.of());
         }
 
-        if (!(existing instanceof ListValue listValue)) {
+        if (!(existing instanceof ListValue)) {
             return new RespErr(
                 "WRONGTYPE",
                 "Operation against a key holding the wrong kind of value"
             );
         }
+
+        ListValue listValue = (ListValue) existing;
 
         if (count == 0 || listValue.getValue().isEmpty()) {
             return count == 1
@@ -77,7 +81,7 @@ public class LPOPCommand implements Command {
         }
 
         if (count == 1) {
-            String removed = listValue.getValue().remove(0);
+            String removed = listValue.getValue().poll();
 
             if (listValue.getValue().isEmpty()) {
                 cache.remove(args[1]);
@@ -87,11 +91,11 @@ public class LPOPCommand implements Command {
         }
 
         List<RespValue> removedElements = new ArrayList<>();
+        Deque<String> deque = listValue.getValue();
 
-        for (int i = 0; i < count && !listValue.getValue().isEmpty(); i++) {
-            removedElements.add(
-                new RespBulkString(listValue.getValue().remove(0))
-            );
+        for (int i = 0; i < count && !deque.isEmpty(); i++) {
+            String removed = deque.poll();
+            removedElements.add(new RespBulkString(removed));
         }
 
         if (listValue.getValue().isEmpty()) {

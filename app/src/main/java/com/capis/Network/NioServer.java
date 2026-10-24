@@ -24,12 +24,14 @@ public class NioServer {
     final private MaintainanceService maintainanceService;
     final private Queue<Task> pendingTasks = new ArrayDeque<>();
     final private int TASKS_EXECUTION_LIMIT = 100; // Arbitrary limit to prevent memory exhaustion
+    final private ClientStateFactory clientStateFactory;
 
-    public NioServer(int port, CapisCore capisCore, MaintainanceService maintainanceService) throws IOException {
+    public NioServer(int port, CapisCore capisCore, MaintainanceService maintainanceService, ClientStateFactory clientStateFactory) throws IOException {
         this.port = port;
         this.capisCore = capisCore;
         this.selector = Selector.open();
         this.maintainanceService = maintainanceService;
+        this.clientStateFactory = clientStateFactory;
     }
 
     public void start() throws Exception {
@@ -53,8 +55,15 @@ public class NioServer {
 
                 if (key.isAcceptable()) {
                     acceptClient(server);
-                } else if (key.isReadable()) {
+                    continue; // Skip to next key after accepting a client
+                }
+
+                if (key.isReadable()) {
                     read(key);
+                } 
+
+                if (key.isValid() && key.isWritable()) {
+                    write(key);
                 }
             }
 
@@ -67,7 +76,7 @@ public class NioServer {
         if (client == null) return; // Guard against spurious wakeups
         
         client.configureBlocking(false);
-        ClientState clientState = new ClientState();
+        ClientState clientState = clientStateFactory.createClientState();
         client.register(selector, SelectionKey.OP_READ, clientState);
 
         System.out.println("Client connected: " + client.getRemoteAddress());
@@ -76,6 +85,14 @@ public class NioServer {
     private void read(SelectionKey key) {
         SocketChannel client = (SocketChannel) key.channel();
         ClientState clientState = (ClientState) key.attachment();
+
+        if (!clientState.getInputBuffer().hasRemaining()) {
+            if (!clientState.growInputBuffer()) {
+                closeConnection(key);          // request too large
+                return;
+            }
+        }
+
         ByteBuffer buffer = clientState.getInputBuffer();
 
         try {
@@ -85,6 +102,11 @@ public class NioServer {
             if (bytesRead == -1) {
                 System.out.println("Client disconnected cleanly.");
                 closeConnection(key);
+                return;
+            }
+
+            if(bytesRead == 0) {
+                // No data read, likely a spurious wakeup; ignore
                 return;
             }
 
@@ -99,13 +121,7 @@ public class NioServer {
             // Engine processing errors or internal bugs
             System.err.println("Internal handling error: " + e.getMessage());
             e.printStackTrace();
-            
-            // Safely attempt to send an error message, catch if the write itself fails
-            try {
-                sendMessage(client, "-ERR Internal server error\r\n");
-            } catch (IOException ioException) {
-                closeConnection(key);
-            }
+            closeConnection(key);
         }
     }
 
@@ -114,7 +130,7 @@ public class NioServer {
         while (tasksExecuted < TASKS_EXECUTION_LIMIT && !pendingTasks.isEmpty()) {
             Task task = pendingTasks.poll();
             if (task != null) {
-                executePendingTask(task);
+                try { executePendingTask(task); } catch (Exception e) { e.printStackTrace(); }
                 tasksExecuted++;
             }
         }
@@ -123,29 +139,36 @@ public class NioServer {
     private void executePendingTask(Task task) {
         SocketChannel client = task.getClient();
         ClientState clientState = task.getClientState();
-        ByteBuffer buffer = clientState.getInputBuffer();
+        SelectionKey key = client.keyFor(selector);
 
-        try {
+        if(key == null || !key.isValid()) return;
 
-            buffer.flip(); 
-            // Process the command using CapisCore
-            String response = capisCore.handle(buffer, clientState);
+        ByteBuffer input = clientState.getInputBuffer();
+        input.flip();
 
-            buffer.compact();
+        String response;
 
-            sendMessage(client, response);
-        } catch (IOException e) {
-            System.err.println("Failed to send response to client: " + e.getMessage());
-            closeConnection(client.keyFor(selector));
-        }catch (Exception e) {
-            System.err.println("Error processing client command: " + e.getMessage());
-            e.printStackTrace();
-            try {
-                sendMessage(client, "-ERR Internal server error\r\n");
-            } catch (IOException ioException) {
-                closeConnection(client.keyFor(selector));
-            }
+        try{
+            response = capisCore.handle(input, clientState);
+            input.compact();
+        }catch(Exception e){
+            System.err.println("Error processing command: " + e.getMessage());
+            input.clear(); 
+            response = "-ERR Internal server error\r\n";
         }
+
+        if(response == null || response.isEmpty()) return;
+
+        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+
+        ByteBuffer outputBuffer = clientState.getOutputBuffer();
+
+        if(outputBuffer.remaining() < bytes.length){
+            outputBuffer = clientState.ensureOutputCapacity(bytes.length);
+        }
+        outputBuffer.put(bytes);
+
+        key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
     }
 
     static void sendMessage(SocketChannel client, String message) throws IOException {
@@ -154,6 +177,26 @@ public class NioServer {
             client.write(response);
         } else {
             throw new ClosedChannelException();
+        }
+    }
+
+    private void write(SelectionKey key) {
+        SocketChannel client = (SocketChannel) key.channel();
+        ClientState clientState = (ClientState) key.attachment();
+        ByteBuffer outputBuffer = clientState.getOutputBuffer();
+
+        try {
+            outputBuffer.flip(); // Prepare buffer for writing
+            client.write(outputBuffer);
+            outputBuffer.compact(); // Prepare buffer for further writes
+
+            if (outputBuffer.position() == 0) {
+                // everything flushed: stop watching OP_WRITE, keep OP_READ
+                key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to write to client: " + e.getMessage());
+            closeConnection(key);
         }
     }
 

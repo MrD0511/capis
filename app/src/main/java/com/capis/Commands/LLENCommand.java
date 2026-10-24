@@ -37,12 +37,14 @@ public class LLENCommand implements Command {
             return new RespInteger(0);
         }
 
-        if (!(value instanceof ListValue listValue)) {
+        if (!(value instanceof ListValue)) {
             return new RespErr(
                 "WRONGTYPE",
                 "Operation against a key holding the wrong kind of value"
             );
         }
+
+        ListValue listValue = (ListValue) value;
 
         return new RespInteger(listValue.getValue().size());
     }

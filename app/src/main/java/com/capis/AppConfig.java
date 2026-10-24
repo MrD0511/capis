@@ -48,8 +48,8 @@ public class AppConfig {
     public static class Builder {
         private int port = 6379; // Default Redis port
         private int maxConnections = 100; // Default max connections
-        private int capacity = 10000; // Default capacity
-        private int bufferSize = 16384; // Default buffer size
+        private int capacity = 100000; // Default capacity
+        private int bufferSize = 16 * 1024; // Default buffer size
         private EvictionPolicy evictionPolicy = EvictionPolicy.LRU; // Default eviction policy
         private int purgeLimit = -1; // Default purge limit, will be calculated based on capacity
 

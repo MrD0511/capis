@@ -11,6 +11,7 @@ import com.capis.Commands.EXISTSCommand;
 import com.capis.Commands.FLUSHALLCommand;
 import com.capis.Commands.GETDELCommand;
 import com.capis.Commands.GetCommand;
+import com.capis.Commands.HELLOCommand;
 import com.capis.Commands.HGETALLCommand;
 import com.capis.Commands.HSETCommand;
 import com.capis.Commands.INCRBYFLOATCommand;
@@ -40,6 +41,8 @@ import com.capis.Commands.ZADDCommand;
 import com.capis.Commands.ZRANGECommand;
 import com.capis.Commands.CommandHandler;
 import com.capis.DataTpes.Core.Value;
+import com.capis.Network.ClientStateFactory;
+import com.capis.Network.NioServer;
 import com.capis.Parser.Parser;
 import com.capis.entities.Cache;
 import com.capis.entities.CacheFactory;
@@ -72,8 +75,13 @@ public class Bootstrap {
 
         CapisCore capisCore = new CapisCore(parser, commandHandler);
 
+        ClientStateFactory clientStateFactory = new ClientStateFactory(appConfig.getBufferSize());
+
         try {
-            return new NioServer(this.appConfig.getPort(), capisCore, maintainanceService);
+            return new NioServer(this.appConfig.getPort(), 
+                                capisCore, 
+                                maintainanceService, 
+                                clientStateFactory);
         } catch (Exception e) {
             System.err.println("Error starting server:");
             e.printStackTrace();
@@ -119,6 +127,7 @@ public class Bootstrap {
         commandRegistry.register(new ZRANGECommand(keyValueStore));
         commandRegistry.register(new PingCommand());
         commandRegistry.register(new EchoCommand());
+        commandRegistry.register(new HELLOCommand());
     }
 
 

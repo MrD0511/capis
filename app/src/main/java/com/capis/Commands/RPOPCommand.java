@@ -1,6 +1,8 @@
 package com.capis.Commands;
 
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 
 import com.capis.DataTpes.Core.ListValue;
@@ -13,7 +15,7 @@ import com.capis.entities.KeyValueStore;
 
 public class RPOPCommand implements Command {
     private final String name = "RPOP";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public RPOPCommand(KeyValueStore cache) {
         this.cache = cache;
@@ -62,23 +64,26 @@ public class RPOPCommand implements Command {
                 : new RespArray(List.of());
         }
 
-        if (!(existing instanceof ListValue listValue)) {
+        if (!(existing instanceof ListValue)) {
             return new RespErr(
                 "WRONGTYPE",
                 "Operation against a key holding the wrong kind of value"
             );
         }
 
-        if (count == 0 || listValue.getValue().isEmpty()) {
+        ListValue listValue = (ListValue) existing;
+        Deque<String> list = listValue.getValue();
+
+        if (count == 0 || list.isEmpty()) {
             return count == 1
                 ? null
                 : new RespArray(List.of());
         }
 
         if (count == 1) {
-            String removed = listValue.getValue().remove(listValue.getValue().size() - 1);
+            String removed = list.pollLast();
 
-            if (listValue.getValue().isEmpty()) {
+            if (list.isEmpty()) {
                 cache.remove(args[1]);
             }
 
@@ -87,13 +92,13 @@ public class RPOPCommand implements Command {
 
         List<RespValue> removedElements = new ArrayList<>();
 
-        for (int i = 0; i < count && !listValue.getValue().isEmpty(); i++) {
-            removedElements.add(
-                new RespBulkString(listValue.getValue().remove(listValue.getValue().size() - 1))
-            );
+        for (int i = 0; i < count && !list.isEmpty(); i++) {
+            String removed = list.pollLast();
+
+            removedElements.add(new RespBulkString(removed));
         }
 
-        if (listValue.getValue().isEmpty()) {
+        if (list.isEmpty()) {
             cache.remove(args[1]);
         }
 

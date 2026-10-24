@@ -22,7 +22,7 @@ happy with the scope it has reached. Everything below is what it is (and isn't) 
 - **RESP request decoding and response encoding** (`Parser`), including null bulk strings and nested
   arrays. Decoding is `ByteBuffer`-driven, so a partial command stays in the buffer for the next read
   instead of being thrown away.
-- **A command registry**: 37 commands are registered into a `CommandRegistry`, each a `Command`
+- **A command registry**: 38 commands are registered into a `CommandRegistry`, each a `Command`
   implementation dispatched by name, plus `MULTI`, `EXEC` and `DISCARD` handled by `CommandHandler`.
 - **Per-connection transactions**: `MULTI` starts a queue on the connection's `ClientState`,
   subsequent commands reply `QUEUED`, and `EXEC` runs them in order and returns the array of results.
@@ -33,9 +33,10 @@ happy with the scope it has reached. Everything below is what it is (and isn't) 
   TTL. Expired entries are removed lazily on access and by a randomized sweep that
   `MaintainanceService` runs on the event loop between `select()` calls
   (see [How the expiry sweep runs](#how-the-expiry-sweep-runs)).
-- **Single-threaded, non-blocking NIO server** with no per-connection threads. Each connection owns an
-  8 KB input buffer (`ClientState`), and the accept/read branches are wrapped so a failing command or
-  a dropped socket tears down only that connection instead of the event loop.
+- **Single-threaded, non-blocking NIO server** with no per-connection threads. Each connection owns
+  a growable input and output buffer pair (`ClientState`), and reads are queued as `Task`s and drained
+  after the select batch — capped at 100 per pass — so one chatty client cannot starve the rest of
+  the loop. A failing command or a dropped socket tears down only that connection.
 - **Startup configuration**: `AppConfig` holds validated values, `ConfigLoader` reads them from
   `--key=value` arguments, and `Bootstrap` is the single place that wires everything together.
   Not every knob is honoured yet — see [Known limitations](#known-limitations).
@@ -49,7 +50,7 @@ lives in memory and is lost when the process stops.
 
 ## Requirements
 
-- **Java 26** (records, sealed interfaces and pattern matching for `instanceof` are all used).
+- **Java 25** (records, sealed interfaces and pattern matching for `instanceof` are all used).
 - A Unix-like shell for the `./gradlew` commands below. On Windows, use `gradlew.bat` instead.
 
 The Gradle wrapper uses Gradle 9.7.1 with the Foojay toolchain resolver, so a suitable JDK is
@@ -69,6 +70,9 @@ pin the RESP parser behaviour: simple strings, integers, bulk strings, arrays, n
 within an array, a partial (split) read returning `null`, and two pipelined commands decoded from one
 buffer.
 
+The `org.graalvm.buildtools.native` plugin is also applied, so `./gradlew nativeCompile` produces a
+GraalVM native image called `redis-java-clone` (built `-O3` with `--no-fallback`).
+
 ## Run the server
 
 ```sh
@@ -87,10 +91,10 @@ Startup values come from `ConfigLoader`, which accepts `--key=value` arguments:
 | Option | Default | Notes |
 | --- | --- | --- |
 | `--port` | `6379` | 0–65535. |
-| `--capacity` | `10000` | Maximum live keys. |
+| `--capacity` | `100000` | Maximum live keys. |
 | `--evictionPolicy` | `LRU` | `LRU` or `LFU`. |
 | `--purgeLimit` | `capacity / 100`, clamped to 16–256 | Budget of the expiry sweep (see limitations). |
-| `--bufferSize` | `16384` | Parsed and validated, but not wired to `ClientState` yet. |
+| `--bufferSize` | `16384` | Initial size of each connection's input and output buffers; the input side grows on demand up to 64 MB. |
 | `--maxConnections` | `100` | Parsed and validated, but not enforced yet. |
 
 An unknown option, a duplicate option or a malformed `--key=value` throws. `AppConfig.Builder`
@@ -135,17 +139,17 @@ I benchmarked the server on my machine with `valkey-benchmark` over `localhost`,
 connections and 100000 requests per command. The CSV output includes the latency percentiles:
 
 ```sh
-valkey-benchmark -p 6379 -t ping_inline,ping_mbulk,set,get,incr,lpush,rpush,lpop,rpop,sadd,hset,zadd \
+valkey-benchmark -p 6379 -t ping_inline,ping_mbulk,set,get,incr,lpush,rpush,lpop,rpop,sadd,hset,zadd,mset,mget,lrange_100,lrange_300,lrange_500,lrange_600 \
   -n 100000 -c 50 --csv
 ```
 
 ### Environment
 
-- CPU: Intel Core i3-2120 @ 3.30 GHz (4 cores)
+- CPU: Intel Core i3-2120 @ 3.30 GHz (2 cores, 4 threads)
 - RAM: 11 GiB
 - OS: Arch Linux (Linux 7.2.9-zen1-1-zen)
-- JVM: OpenJDK 27
-- Benchmark tool: `redis-benchmark`
+- JVM: OpenJDK 25
+- Benchmark tool: `valkey-benchmark`
 
 ### Results
 
@@ -175,7 +179,7 @@ baseline.
 
 Notes:
 
-- `redis-benchmark` prints `WARNING: Could not fetch server CONFIG` because CAPIS
+- `valkey-benchmark` prints `WARNING: Could not fetch server CONFIG` because CAPIS
   has no `CONFIG` command. The benchmark still runs fine with its defaults.
 - `LPOP` is the slowest here because the client continually refills the list, so every pop walks the
   list head and runs the lazy-expiry check.
@@ -184,7 +188,7 @@ Notes:
 
 ## Supported commands
 
-Command names are matched case-insensitively (`args[0]` is upper-cased before lookup). There are 37
+Command names are matched case-insensitively (`args[0]` is upper-cased before lookup). There are 38
 commands in the `CommandRegistry`, plus the three transaction keywords below.
 
 ### Connection
@@ -193,6 +197,7 @@ commands in the `CommandRegistry`, plus the three transaction keywords below.
 | --- | --- |
 | `PING` | Returns `PONG`. `PING <message>` echoes the message as a bulk string. |
 | `ECHO <message>` | Returns the message as a bulk string. A bare `ECHO` replies `+ECHO` rather than erroring. |
+| `HELLO [2]` | RESP handshake. Returns an array describing the server (`capis`, version `1.0.0`, proto 2, standalone, master); any protocol version other than `2` replies `-NOPROTO ...`. |
 
 ### Transactions
 
@@ -290,35 +295,49 @@ thread, no timer, nothing to coordinate with the single-threaded model.
 
 1. `Bootstrap` is the composition root: it builds the `Cache` via `CacheFactory`, wraps it in a
    `KeyValueStore` and a `MaintainanceService`, creates the `Parser` and `CommandRegistry`, registers
-   all 37 commands, builds the `CommandHandler` and `CapisCore`, and finally the `NioServer`.
-2. `NioServer` accepts a client, creates a `ClientState` for it (which owns an 8 KB `ByteBuffer`), and
-   registers the channel with a `Selector` for read readiness, attaching the state to the key.
+   all 38 commands, builds the `CommandHandler` and `CapisCore`, creates a `ClientStateFactory` from
+   the configured `bufferSize`, and finally the `NioServer`.
+2. `NioServer` accepts a client, asks the `ClientStateFactory` for a `ClientState` (which owns an
+   input and an output `ByteBuffer`), and registers the channel with a `Selector` for read readiness,
+   attaching the state to the key.
 3. On each loop iteration it first calls `maintainanceService.maintain()` (the expiry sweep), then
-   selects and processes the ready keys.
-4. On a readable event it reads into that connection's buffer and flips it. The accept and read
-   branches run inside `try`/`catch`: an `IOException` closes the connection silently, and any other
-   exception replies `-ERR Internal server error` and cancels the key instead of killing the loop.
-5. `CapisCore.handle` loops over the buffer, asking `Parser.decode` for one command at a time and
-   appending each encoded reply, so pipelined commands are all answered. A parse failure comes back as
-   `-ERR Failed to decode command`, and an empty command as `-ERR empty command`.
-6. `CommandHandler.execute` upper-cases the first argument. `MULTI`/`EXEC`/`DISCARD` are handled
+   `selector.select(10)` — a 10 ms timeout, so the sweep and the task queue still run on an idle
+   server.
+4. On a readable event the connection's buffer is filled and a `Task` is queued; the loop never
+   decodes inline. On a writable event the output buffer is flushed and `OP_WRITE` is dropped once it
+   is empty. Both the accept and read branches run inside `try`/`catch`: an `IOException` closes the
+   connection, anything else tears down that key, and neither kills the loop.
+5. After the ready keys, up to 100 queued tasks run (`TASKS_EXECUTION_LIMIT`). Each one flips the
+   input buffer, hands it to `CapisCore.handle`, `compact()`s whatever was not consumed back to the
+   front for the next read, copies the concatenated replies into the connection's output buffer and
+   sets `OP_WRITE`. A task that throws replies `-ERR Internal server error` and clears the input
+   buffer instead of taking the process down.
+6. `CapisCore.handle` loops over the buffer, asking `Parser.decode` for one command at a time and
+   appending each encoded reply, so pipelined commands are all answered. A `null` decode result —
+   incomplete or undecodable input — just stops the loop and leaves the bytes for the next read, and
+   an empty command replies `-ERR empty command`.
+7. `CommandHandler.execute` upper-cases the first argument. `MULTI`/`EXEC`/`DISCARD` are handled
    inline; otherwise the name is looked up in the `CommandRegistry`, or — if the connection is inside
    a transaction — the command is queued and `+QUEUED` is returned.
-7. After handling, the buffer is `compact()`ed so any unconsumed bytes move to the front and wait for
-   the next read. The concatenated replies are written to the channel.
+
+Replies are never written from the decode path; they wait in the output buffer until the next
+writable event, which is what keeps a slow reader from blocking command processing.
 
 ## Project structure
 
 ```text
 app/src/main/java/com/capis/App.java                         Entry point, prints the banner
 app/src/main/java/com/capis/AppConfig.java                   Validated config + builder + defaults
+app/src/main/java/com/capis/Banner.java                      ASCII banner + startup summary box
 app/src/main/java/com/capis/ConfigLoader.java                Parses --key=value CLI arguments
 app/src/main/java/com/capis/EvictionPolicy.java              LRU / LFU enum
 app/src/main/java/com/capis/Bootstrap.java                   Composition root, wires everything
-app/src/main/java/com/capis/NioServer.java                   Non-blocking TCP server and event loop
 app/src/main/java/com/capis/CapisCore.java                   Decode / execute / encode facade
 app/src/main/java/com/capis/MaintainanceService.java         Runs the expiry sweep each loop
-app/src/main/java/com/capis/Network/ClientState.java         Per-connection input buffer + MULTI queue
+app/src/main/java/com/capis/Network/NioServer.java           Non-blocking TCP server, task queue, event loop
+app/src/main/java/com/capis/Network/ClientState.java         Per-connection input/output buffers + MULTI queue
+app/src/main/java/com/capis/Network/ClientStateFactory.java  Builds ClientState with the configured buffer size
+app/src/main/java/com/capis/Network/Task.java                Queued read: channel + state, drained after select
 app/src/main/java/com/capis/Parser/Parser.java               RESP decoding and encoding
 app/src/main/java/com/capis/Commands/                        Command interface, handler, one class per command
 app/src/main/java/com/capis/Commands/CommandRegistry.java    Name -> Command lookup
@@ -357,15 +376,14 @@ is a knock on the project; it is just the current scope.
 
 ### Protocol and server
 
-- A single request larger than a connection's 8 KB buffer is not reassembled across reads. The
-  buffer never grows, so an oversized `SET` can leave that connection stuck rather than completing.
-- Responses are written with one `channel.write` and partial writes are not retried.
+- A connection's input buffer grows on demand, but only up to 64 MB; a request larger than that gets
+  the connection closed instead of a reply.
 - A client can send `$-1` (a null bulk) as an argument; only `LPUSH`, `MSET` and `MGET` guard against
-  the resulting `null` argument explicitly, so some other commands fall through to the event loop's
+  the resulting `null` argument explicitly, so some other commands fall through to the task's
   internal-error reply.
 - Malformed RESP is not turned into a clean protocol error that closes the connection; the decode
   result is just "not decodable", so recovery is best-effort.
-- There is no `CONFIG` command, so `redis-benchmark` prints `WARNING: Could not fetch server CONFIG`.
+- There is no `CONFIG` command, so `valkey-benchmark` prints `WARNING: Could not fetch server CONFIG`.
 - There is no `KEYS` or `SCAN`, so the keyspace cannot be enumerated from a client. `LRUCache` still
   has a `keys()` helper, but it is left out of the `Cache` interface and no command uses it.
 
@@ -373,8 +391,8 @@ is a knock on the project; it is just the current scope.
 
 - Configuration is CLI-only for now. The env-var and `capis.properties` sources sketched in
   `docs/` are not implemented; `ConfigLoader` only understands `--key=value`.
-- `--bufferSize` and `--maxConnections` are parsed and range-checked but not wired to anything:
-  `ClientState` still hardcodes its 8 KB buffer and the server enforces no connection cap.
+- `--maxConnections` is parsed and range-checked but not enforced: the server accepts as many
+  clients as the OS lets it.
 - `--purgeLimit` is computed, validated and printed in the banner, but `CacheFactory` still builds
   both caches with their default sweep budget of `100`; the two-argument cache constructors that
   accept a limit are never called.
@@ -382,15 +400,14 @@ is a knock on the project; it is just the current scope.
 
 ### Storage and expiry
 
-- Capacity defaults to a silent 10000 entries: once it is reached, `LRUCache` drops the
+- Capacity defaults to a silent 100000 entries: once it is reached, `LRUCache` drops the
   least-recently-used key and `LFUCache` drops the least-frequently-used one, with no signal either
   way.
 - The expiry sweep only samples up to 100 entries per event-loop pass, so an expired key can stay in
   memory for a little while until it is either touched or reached by the sweep.
 - Sets are backed by a `HashSet` and sorted sets by a `TreeSet` with a linear `find`, so `SMEMBERS`
   order is unspecified and `ZADD`/`ZRANGE` are O(n).
-- `LFUCache.size()` still prints a debug line to stdout, and the LFU frequency bookkeeping has not
-  been exercised by tests.
+- `LFUCache.size()` no longer prints debug output to stdout.
 
 ### Command semantics
 
@@ -403,9 +420,8 @@ is a knock on the project; it is just the current scope.
 - `LPOP`/`RPOP key 1` returns a bulk string where Redis 6.2+ returns a one-element array, and a
   missing key with an explicit count returns an empty array rather than a nil array.
 - `EXPIRE` and `SETEX` accept a TTL of `0` (the key dies immediately) and reject only negative values.
-- The `WRONGTYPE` prefix is inconsistent: `GET`, `LLEN`, `LINDEX`, `LRANGE`, `LPOP`, `RPOP`, the set
-  commands and `ZRANGE` reply `-WRONGTYPE ...`, while `HSET`, `HGETALL`, `ZADD`, `APPEND`, `STRLEN`,
-  `INCRBYFLOAT` and `GETDEL` reply `-ERR WRONGTYPE ...`, and `LPUSH` uses its own wording.
+- The `WRONGTYPE` responses vary slightly in wording across commands (the implementation uses both
+  `-WRONGTYPE ...` and `-ERR WRONGTYPE ...` forms).
 
 ### Transactions
 
@@ -437,7 +453,7 @@ flowchart LR
         Parser["Parser<br/>RESP in / RESP out"]
         Core["CapisCore"]
         Handler["CommandHandler<br/>+ TransactionManager"]
-        Registry["CommandRegistry<br/>37 commands"]
+        Registry["CommandRegistry<br/>38 commands"]
         Store["KeyValueStore"]
         Cache[("Cache<br/>LRU or LFU")]
     end
@@ -464,10 +480,15 @@ flowchart LR
 classDiagram
 	class App {
 		+main(String[] args) void
-		-printBanner(int port, String policy, int capacity, int purgeLimit) void
+	}
+
+	class Banner {
+		+print(int port, String evictionPolicy, int capacity, int purgeLimit) void
 	}
 
 	class ConfigLoader {
+		-Map~String, String~ configMap
+		+ConfigLoader()
 		+load(String[] args) AppConfig
 		-parseArgs(String[] args) Map~String, String~
 	}
@@ -516,12 +537,32 @@ classDiagram
 		-CapisCore capisCore
 		-Selector selector
 		-MaintainanceService maintainanceService
-		+NioServer(int port, CapisCore capisCore, MaintainanceService maintainanceService)
+		-Queue~Task~ pendingTasks
+		~int TASKS_EXECUTION_LIMIT
+		-ClientStateFactory clientStateFactory
+		+NioServer(int port, CapisCore capisCore, MaintainanceService maintainanceService, ClientStateFactory clientStateFactory)
 		+start() void
 		-acceptClient(ServerSocketChannel server) void
 		-read(SelectionKey key) void
+		-executePendingTasks() void
+		-executePendingTask(Task task) void
 		~sendMessage(SocketChannel client, String message) void
+		-write(SelectionKey key) void
 		-closeConnection(SelectionKey key) void
+	}
+
+	class Task {
+		-SocketChannel client
+		-ClientState clientState
+		+Task(SocketChannel client, ClientState clientState)
+		+getClient() SocketChannel
+		+getClientState() ClientState
+	}
+
+	class ClientStateFactory {
+		~int bufferSize
+		+ClientStateFactory(int bufferSize)
+		+createClientState() ClientState
 	}
 
 	class MaintainanceService {
@@ -613,11 +654,14 @@ classDiagram
 	class HGETALLCommand
 	class ZADDCommand
 	class ZRANGECommand
+	class HELLOCommand
 
 	class ClientState {
 		-boolean inTransaction
 		-List~String[]~ queue
 		-ByteBuffer inputBuffer
+		-ByteBuffer outputBuffer
+		+ClientState(int bufferSize)
 		+discardTransaction() void
 		+isInTransaction() boolean
 		+beginTransaction() void
@@ -625,6 +669,9 @@ classDiagram
 		+queueCommand(String[] command) void
 		+getQueue() List~String[]~
 		+getInputBuffer() ByteBuffer
+		+getOutputBuffer() ByteBuffer
+		+growInputBuffer() boolean
+		+ensureOutputCapacity(int extraBytes) ByteBuffer
 	}
 
 	class KeyValueStore {
@@ -799,6 +846,7 @@ classDiagram
 	App --> ConfigLoader : loads
 	App --> Bootstrap : builds
 	App --> NioServer : starts
+	App ..> Banner : prints
 	ConfigLoader ..> Builder : fills
 	Builder ..> AppConfig : constructs
 	Builder --> EvictionPolicy : validates
@@ -816,6 +864,9 @@ classDiagram
 	CacheFactory ..> LFUCache : creates for LFU
 	NioServer *-- CapisCore : dispatches to
 	NioServer *-- MaintainanceService : calls maintain()
+	NioServer *-- ClientStateFactory : builds ClientState
+	NioServer o-- Task : queues reads
+	ClientStateFactory ..> ClientState : creates
 	MaintainanceService --> KeyValueStore : sweeps expiry
 	CapisCore *-- Parser
 	CapisCore *-- CommandHandler
@@ -863,6 +914,7 @@ classDiagram
 	Command <|.. HGETALLCommand
 	Command <|.. ZADDCommand
 	Command <|.. ZRANGECommand
+	Command <|.. HELLOCommand
 	GetCommand --> KeyValueStore
 	SetCommand --> KeyValueStore
 	MSetCommand --> KeyValueStore

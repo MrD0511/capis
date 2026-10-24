@@ -1,7 +1,9 @@
 package com.capis.Commands;
 
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
+import java.util.Queue;
 
 import com.capis.DataTpes.Core.ListValue;
 import com.capis.DataTpes.Core.Value;
@@ -54,33 +56,44 @@ public class LRangeCommand implements Command {
             return new RespArray(List.of());
         }
 
-        if (!(value instanceof ListValue listValue)) {
+        if (!(value instanceof ListValue )) {
             return new RespErr(
                 "WRONGTYPE",
                 "Operation against a key holding the wrong kind of value"
             );
         }
 
-        List<String> list = listValue.getValue();
+        ListValue listValue = (ListValue) value;
+
+        Deque<String> list = listValue.getValue();
+        int size = list.size();
 
         if (start < 0) {
-            start = list.size() + start;
+            start = size + start;
         }
 
         if (stop < 0) {
-            stop = list.size() + stop;
+            stop = size + stop;
         }
 
         start = Math.max(start, 0);
-        stop = Math.min(stop, list.size() - 1);
-
+        stop = Math.min(stop, size - 1);
+        
         List<RespValue> result = new ArrayList<>();
 
-        if (start <= stop && start < list.size()) {
-            for (int i = start; i <= stop; i++) {
-                result.add(
-                    new RespBulkString(list.get(i))
-                );
+        if (start <= stop && start < size) {
+            int index = 0;
+
+            for (String element : list) {
+                if (index > stop) {
+                    break;
+                }
+
+                if (index >= start) {
+                    result.add(new RespBulkString(element));
+                }
+
+                index++;
             }
         }
 

@@ -1,12 +1,38 @@
 package com.capis;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.Properties;
+
 public class ConfigLoader {
 
-    public static AppConfig load(String[] args) {
-        Map<String, String> configMap = parseArgs(args);
+    private Map<String, String> configMap;
+    private static final String CONFIG_FILE_PATH = "config.properties";
+
+    public ConfigLoader() {
+        this.configMap = new HashMap<>();
+        loadFromFile();
+    }
+
+    public void loadFromFile() {
+
+        Properties props = new Properties();
+
+        try (FileInputStream input = new FileInputStream(CONFIG_FILE_PATH)) {
+            props.load(input);
+            for (String key : props.stringPropertyNames()) {
+                this.configMap.put(key, props.getProperty(key));
+            }
+        } catch (IOException e) {
+            // Ignore if config file is not present
+        }
+    }
+
+    public AppConfig load(String[] args) {
+        Map<String, String> configMap = this.parseArgs(args);
 
         AppConfig.Builder builder = new AppConfig.Builder();
 
@@ -36,9 +62,7 @@ public class ConfigLoader {
         return builder.build();
     }
 
-    private static Map<String, String> parseArgs(String[] args) {
-        Map<String, String> configMap = new HashMap<>();
-
+    private Map<String, String> parseArgs(String[] args) {
         for (String arg : args) {
             if (!arg.startsWith("--")) {
                 throw new IllegalArgumentException(
@@ -57,13 +81,13 @@ public class ConfigLoader {
             String key = arg.substring(2, separator);
             String value = arg.substring(separator + 1);
 
-            if (configMap.putIfAbsent(key, value) != null) {
+            if (this.configMap.putIfAbsent(key, value) != null) {
                 throw new IllegalArgumentException(
                     "Duplicate option: --" + key
                 );
             }
         }
 
-        return configMap;
+        return this.configMap;
     }
 }

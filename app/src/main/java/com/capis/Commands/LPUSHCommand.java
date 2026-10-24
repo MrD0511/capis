@@ -1,7 +1,7 @@
 package com.capis.Commands;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 import com.capis.DataTpes.Core.ListValue;
 import com.capis.DataTpes.Core.Value;
@@ -41,10 +41,10 @@ public class LPUSHCommand implements Command {
         ListValue listValue;
         
         if(existing == null){
-            listValue = new ListValue(new ArrayList<>());
+            listValue = new ListValue(new ArrayDeque<>());
             cache.put(key, listValue);
-        }else if(existing instanceof ListValue existingList){
-            listValue = existingList;
+        } else if(existing instanceof ListValue ){
+            listValue = (ListValue) existing;
         }else{
             return new RespErr(
                 "ERR",
@@ -52,7 +52,7 @@ public class LPUSHCommand implements Command {
             );
         }
 
-        List<String> list = listValue.getValue();
+        Deque<String> list = listValue.getValue();
 
 
         for (int i = 2; i < args.length; i++) {
@@ -64,7 +64,7 @@ public class LPUSHCommand implements Command {
                 );
             }
 
-            list.add(0, args[i]);
+            list.offerFirst(args[i]);
         }
 
         return new RespInteger(list.size());

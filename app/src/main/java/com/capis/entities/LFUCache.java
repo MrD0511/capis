@@ -148,7 +148,6 @@ public class LFUCache<K, V> implements Cache<K, V> {
     }
 
     public int size() {
-        System.out.println("Size of the cache: " + map.size());
         return map.size();
     }
 

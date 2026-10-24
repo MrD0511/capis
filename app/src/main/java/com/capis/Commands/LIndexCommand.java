@@ -1,6 +1,7 @@
 package com.capis.Commands;
 
-import java.util.List;
+import java.util.Deque;
+import java.util.Queue;
 
 import com.capis.DataTpes.Core.ListValue;
 import com.capis.DataTpes.Core.Value;
@@ -50,14 +51,16 @@ public class LIndexCommand implements Command {
             return null;
         }
 
-        if (!(value instanceof ListValue listValue)) {
+        if (!(value instanceof ListValue)) {
             return new RespErr(
                 "WRONGTYPE",
                 "Operation against a key holding the wrong kind of value"
             );
         }
 
-        List<String> list = listValue.getValue();
+        ListValue listValue = (ListValue) value;
+
+        Deque<String> list = listValue.getValue();
 
         if (index < 0) {
             index = list.size() + index;
@@ -67,6 +70,6 @@ public class LIndexCommand implements Command {
             return null;
         }
 
-        return new RespBulkString(list.get(index));
+        return new RespBulkString(list.stream().skip(index).findFirst().orElse(null));
     }
 }

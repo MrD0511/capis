@@ -1,16 +1,19 @@
-package com.capis;
+package com.capis.Config;
+
+import com.capis.DataTypes.EvictionPolicy;
+
 
 public class AppConfig {
-    private int port;
-    private int maxConnections;
-    private int capacity;
-    private int bufferSize;
-    private EvictionPolicy evictionPolicy;
+    private final int port;
+    private final  int maxConnections;
+    private final int capacity;
+    private final int bufferSize;
+    private final EvictionPolicy evictionPolicy;
 
     private static final int MIN_PURGE_LIMIT = 16;
     private static final int MAX_PURGE_LIMIT = 256;
 
-    private int purgeLimit;
+    private final int purgeLimit;
 
     private AppConfig(Builder builder) {
         this.port = builder.port;

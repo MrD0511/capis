@@ -9,7 +9,7 @@ import com.capis.entities.KeyValueStore;
 
 public class INCRBYFLOATCommand implements Command {
     private final String name = "INCRBYFLOAT";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public INCRBYFLOATCommand(KeyValueStore cache) {
         this.cache = cache;
@@ -35,8 +35,6 @@ public class INCRBYFLOATCommand implements Command {
         }
 
         Value<?> existing = cache.get(args[1]);
-
-
 
         if(existing != null && !(existing instanceof StringValue)) {
             return new RespErr("ERR", "WRONGTYPE Operation against a key holding the wrong kind of value");

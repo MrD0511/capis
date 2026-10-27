@@ -4,7 +4,9 @@ import java.nio.ByteBuffer;
 
 import com.capis.Commands.CommandHandler;
 import com.capis.DataTpes.RespValues.RespErr;
+import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.Network.ClientState;
+import com.capis.Parser.ParsedCommand;
 import com.capis.Parser.Parser;
 
 public class CapisCore  {
@@ -20,16 +22,21 @@ public class CapisCore  {
         StringBuilder output = new StringBuilder();
 
         while(buffer.hasRemaining()){
-            String[] command = parser.decode(buffer);
-            if(command == null){
+            ParsedCommand parsedValue = parser.decode(buffer);
+
+            if(parsedValue == null){
                 break;
             }
 
-            if(command.length == 0){
+            if(parsedValue.getCommand().length == 0){
                 output.append(parser.encode(new RespErr("ERR", "empty command")));
             }
 
-            output.append(parser.encode(commandHandler.execute(command, clientState)));
+            RespValue result = commandHandler.execute(parsedValue.getCommand(), clientState);
+
+            System.out.println("parsed resp: " + parsedValue.getResp());
+
+            output.append(parser.encode(result));
         }
 
         return output.toString();

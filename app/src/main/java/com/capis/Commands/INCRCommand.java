@@ -8,18 +8,20 @@ import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class INCRCommand implements Command {
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
-    private String name = "INCR";
+    private final String name = "INCR";
 
     public INCRCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
         if (args == null || args.length != 2) {
             return new RespErr(

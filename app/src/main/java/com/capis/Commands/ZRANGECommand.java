@@ -14,7 +14,7 @@ import com.capis.entities.KeyValueStore;
 
 public class ZRANGECommand implements Command {
     private final String name = "ZRANGE";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public ZRANGECommand(KeyValueStore cache) {
         this.cache = cache;

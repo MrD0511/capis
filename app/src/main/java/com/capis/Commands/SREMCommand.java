@@ -10,17 +10,19 @@ import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class SREMCommand implements Command {
-    KeyValueStore cache;
-    String name = "SREM";
+    private final KeyValueStore cache;
+    private final String name = "SREM";
 
     public SREMCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
         if (args == null || args.length < 3) {
             return new RespErr("ERR", "wrong number of arguments for 'SREM' command");

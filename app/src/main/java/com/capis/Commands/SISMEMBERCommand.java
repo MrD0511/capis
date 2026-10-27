@@ -9,16 +9,18 @@ import com.capis.entities.KeyValueStore;
 
 public class SISMEMBERCommand implements Command {
     private final String name = "SISMEMBER";
-    private  KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public SISMEMBERCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
         if (args == null || args.length != 3) {
             return new RespErr("ERR", "wrong number of arguments for 'SISMEMBER' command");

@@ -12,7 +12,7 @@ import com.capis.entities.KeyValueStore;
 
 public class TypeCommand implements Command {
     private final String name = "TYPE";
-    private KeyValueStore keyValueStore;
+    private final KeyValueStore keyValueStore;
 
     public TypeCommand(KeyValueStore keyValueStore) {
         this.keyValueStore = keyValueStore;

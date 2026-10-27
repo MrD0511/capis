@@ -9,7 +9,7 @@ import com.capis.entities.KeyValueStore;
 
 public class EXPIRECommand implements Command {
     private final String name = "EXPIRE";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public EXPIRECommand(KeyValueStore cache) {
         this.cache = cache;

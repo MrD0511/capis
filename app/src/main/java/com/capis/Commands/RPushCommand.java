@@ -2,7 +2,6 @@ package com.capis.Commands;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Queue;
 
 import com.capis.DataTpes.Core.ListValue;
 import com.capis.DataTpes.Core.Value;
@@ -44,8 +43,8 @@ public class RPushCommand implements Command {
         if (existingValue == null) {
             listValue = new ListValue(new ArrayDeque<>());
             cache.put(key, listValue);
-        } else if (existingValue instanceof ListValue ) {
-            listValue = (ListValue) existingValue;
+        } else if (existingValue instanceof ListValue listValue1 ) {
+            listValue = listValue1;
         } else {
             return new RespErr(
                 "WRONGTYPE",

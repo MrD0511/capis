@@ -9,7 +9,7 @@ import com.capis.entities.KeyValueStore;
 
 public class GETDELCommand implements Command {
     private final String name = "GETDEL";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public GETDELCommand(KeyValueStore cache) {
         this.cache = cache;

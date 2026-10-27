@@ -11,18 +11,19 @@ import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class SADDCommand implements Command {
-    KeyValueStore cache;
-    String name = "SADD";
+    private final KeyValueStore cache;
+    private final String name = "SADD";
 
     public SADDCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
-
+    @Override
     public RespValue execute(String[] args){
         if(args == null || args.length < 3){
             return new RespErr("ERR", "wrong number of arguments for 'SADD' command");

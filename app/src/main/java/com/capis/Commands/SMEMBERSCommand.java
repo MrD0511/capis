@@ -13,16 +13,18 @@ import com.capis.entities.KeyValueStore;
 
 public class SMEMBERSCommand implements Command {
     private final String name = "SMEMBERS";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public SMEMBERSCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args){
         if(args == null || args.length != 2){
             return new RespErr("ERR", "wrong number of arguments for 'SMEMBERS' command");

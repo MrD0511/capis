@@ -43,8 +43,8 @@ public class LPUSHCommand implements Command {
         if(existing == null){
             listValue = new ListValue(new ArrayDeque<>());
             cache.put(key, listValue);
-        } else if(existing instanceof ListValue ){
-            listValue = (ListValue) existing;
+        } else if(existing instanceof ListValue listValue1 ){
+            listValue = listValue1;
         }else{
             return new RespErr(
                 "ERR",

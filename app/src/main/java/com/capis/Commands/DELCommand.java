@@ -6,17 +6,19 @@ import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class DELCommand implements Command {
-    String name = "DEL";
-    KeyValueStore cache;
+    private final String name = "DEL";
+    private final KeyValueStore cache;
 
     public DELCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
         // Implementation for DEL command
         // For each key in args, delete the key from the cache

@@ -19,40 +19,74 @@ public class Parser {
         return c == '+' || c == '-' || c == ':' || c == '$' || c == '*';
     }
 
-    // Main entry point for clients
-    public String[] decode(ByteBuffer buffer) {
-        buffer.mark();
+
+    public ParsedCommand decode(ByteBuffer buffer) {
+        int startPos = buffer.position();
 
         try {
-            byte first = buffer.get(buffer.position());
-            if(!isRespValue(first)){
-                String line = readLine(buffer);
-                if(line == null) return null;
+            if (!buffer.hasRemaining()) {
+                return null;
+            }
 
-                if(line.isEmpty()){     
+            byte first = buffer.get(buffer.position());
+
+            if (!isRespValue(first)) {
+                String line = readLine(buffer);
+
+                if (line == null || line.isEmpty()) {
+                    buffer.position(startPos);
                     return null;
                 }
 
-                return line.strip().split("\\s+");
+                int endPos = buffer.position();
+                ByteBuffer view = buffer.duplicate();
+                view.position(startPos);
+                view.limit(endPos);
+
+                byte[] bytes = new byte[endPos - startPos];
+                view.get(bytes);
+
+                String raw = new String(bytes, StandardCharsets.UTF_8);
+
+                return new ParsedCommand(
+                    line.strip().split("\\s+"),
+                    raw
+                );
             }
 
             List<String> result = new ArrayList<>();
 
             boolean success = parseElement(buffer, result);
 
-            if(!success){
-                buffer.reset();
+            if (!success) {
+                // Do not use reset(): nested methods overwrite the mark.
+                buffer.position(startPos);
                 return null;
             }
 
-            String[] arrayResult = result.toArray(new String[0]);
-            
-            return arrayResult;
+            int endPos = buffer.position();
+
+            ByteBuffer view = buffer.duplicate();
+            view.position(startPos);
+            view.limit(endPos);
+
+            byte[] consumedBytes = new byte[endPos - startPos];
+            view.get(consumedBytes);
+
+            String consumedString =
+                new String(consumedBytes, StandardCharsets.UTF_8);
+
+            return new ParsedCommand(
+                result.toArray(String[]::new),
+                consumedString
+            );
+
         } catch (Exception e) {
+            // Restore the original position on failure.
+            buffer.position(startPos);
             e.printStackTrace();
+            return null;
         }
-        
-        return null;
     }
 
     public String encode(RespValue value){
@@ -120,7 +154,7 @@ public class Parser {
         char type = (char) typeByte;
 
         switch (type) {
-            case '+', '-':
+            case '+', '-' -> {
                 String line = readLine(buffer);
 
                 if(line == null){
@@ -128,8 +162,9 @@ public class Parser {
                 }
                 accumulator.add(line);
                 return true;
+            }
 
-            case ':': // Integer
+            case ':' -> { // Integer
                 String intLine = readLine(buffer);
 
                 if(intLine == null){
@@ -143,8 +178,9 @@ public class Parser {
                 accumulator.add(intLine);
                 
                 return true;
+            }
 
-            case '$': // Bulk String
+            case '$' -> { // Bulk String
                 String bulkLengthLine = readLine(buffer);
                 if (bulkLengthLine == null) return false;
                 if (bulkLengthLine.isEmpty()) {
@@ -162,8 +198,9 @@ public class Parser {
                 
                 accumulator.add(bulkData);
                 return true;
+            }
 
-            case '*': // Array (Recursion magic happens here!)
+            case '*' -> { // Array (Recursion magic happens here!)
                 String arrayLengthLine = readLine(buffer);
                 if (arrayLengthLine == null) return false;
                 if (arrayLengthLine.isEmpty()) {
@@ -183,8 +220,9 @@ public class Parser {
                     }
                 }
                 return true;
+            }
 
-            default:
+            default ->
                 throw new Exception("Unknown RESP type byte: " + type);
         }
     }

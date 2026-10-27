@@ -7,18 +7,20 @@ import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class DECRCommand implements Command{
-    KeyValueStore cache;
+    private final KeyValueStore cache;
 
-    String name = "DECR";
+    private final String name = "DECR";
 
     public DECRCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
         if (args == null || args.length != 2) {
             return new RespErr(

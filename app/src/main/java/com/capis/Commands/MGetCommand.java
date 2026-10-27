@@ -19,6 +19,7 @@ public class MGetCommand implements Command {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }

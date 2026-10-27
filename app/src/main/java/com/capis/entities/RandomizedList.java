@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 public class RandomizedList<E> {
-    private List<E> list = new ArrayList<>();
-    private Map<E, Integer> indexMap = new HashMap<>();
+    private final List<E> list = new ArrayList<>();
+    private final Map<E, Integer> indexMap = new HashMap<>();
 
     public boolean add(E element) {
         if (indexMap.containsKey(element)) {

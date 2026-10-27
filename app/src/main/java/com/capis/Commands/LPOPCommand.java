@@ -2,7 +2,6 @@ package com.capis.Commands;
 
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 
 import com.capis.DataTpes.Core.ListValue;

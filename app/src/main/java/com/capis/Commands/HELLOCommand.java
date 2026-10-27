@@ -30,7 +30,7 @@ public class HELLOCommand implements Command {
             new RespBulkString("id"),      new RespInteger(1),
             new RespBulkString("mode"),    new RespBulkString("standalone"),
             new RespBulkString("role"),    new RespBulkString("master"),
-            new RespBulkString("modules"), new RespArray(new ArrayList<RespValue>())
+            new RespBulkString("modules"), new RespArray(new ArrayList<>())
         ));
     }
 }

@@ -7,7 +7,7 @@ import com.capis.entities.KeyValueStore;
 
 public class FLUSHALLCommand implements Command {
     private final String name = "FLUSHALL";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public FLUSHALLCommand(KeyValueStore cache) {
         this.cache = cache;

@@ -7,8 +7,8 @@ import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class MSetCommand implements Command {
-    String name = "MSET";
-    KeyValueStore cache;
+    private final String name = "MSET";
+    private final KeyValueStore cache;
 
     public MSetCommand(KeyValueStore cache) {
         this.cache = cache;
@@ -19,6 +19,7 @@ public class MSetCommand implements Command {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
         // Implementation for MSET command
         // For each key-value pair in args, set the key to the value

@@ -10,7 +10,7 @@ import com.capis.entities.KeyValueStore;
 
 public class SETEXCommand implements Command {
     private final String name = "SETEX";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public SETEXCommand(KeyValueStore cache) {
         this.cache = cache;

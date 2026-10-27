@@ -11,8 +11,8 @@ import com.capis.Network.ClientState;
 
 
 public class CommandHandler {
-    CommandRegistry commandRegistery;
-    TransactionManager transactionManager = new TransactionManager();
+    private final CommandRegistry commandRegistery;
+    private final TransactionManager transactionManager = new TransactionManager();
     
     public CommandHandler(CommandRegistry commandRegistery) {
         this.commandRegistery = commandRegistery;
@@ -65,7 +65,8 @@ public class CommandHandler {
         if (!transactionManager.isActive(clientState)) {
             return new RespErr("ERR", "EXEC without MULTI");
         }
-        var queuedCommands = transactionManager.takeQueuedCommands(clientState);
+
+        List<String[]> queuedCommands = transactionManager.takeQueuedCommands(clientState);
         transactionManager.end(clientState);
 
         List<RespValue> results = new ArrayList<>();

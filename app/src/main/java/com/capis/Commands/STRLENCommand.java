@@ -11,7 +11,7 @@ import com.capis.entities.KeyValueStore;
 
 public class STRLENCommand implements Command {
     private final String name = "STRLEN";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public STRLENCommand(KeyValueStore cache) {
         this.cache = cache;

@@ -7,7 +7,7 @@ import com.capis.entities.KeyValueStore;
 
 public class TTLCommand implements Command {
     private final String name = "TTL";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public TTLCommand(KeyValueStore cache) {
         this.cache = cache;

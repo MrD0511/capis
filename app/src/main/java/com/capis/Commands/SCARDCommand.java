@@ -15,10 +15,12 @@ public class SCARDCommand implements Command {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args){
         if(args == null || args.length != 2){
             return new RespErr("ERR", "wrong number of arguments for 'SCARD' command");

@@ -12,7 +12,7 @@ import com.capis.entities.KeyValueStore;
 
 public class ZADDCommand implements Command {
     private final String name = "ZADD";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public ZADDCommand(KeyValueStore cache) {
         this.cache = cache;

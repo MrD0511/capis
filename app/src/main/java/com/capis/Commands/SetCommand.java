@@ -7,17 +7,19 @@ import com.capis.DataTpes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class SetCommand implements Command {
-    String name = "SET";
-    private KeyValueStore keyValueStore;
+    private final String name = "SET";
+    private final KeyValueStore keyValueStore;
 
     public SetCommand(KeyValueStore keyValueStore) {
         this.keyValueStore = keyValueStore;
     }
 
+    @Override   
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
         if (args.length != 3) {
             return new RespErr("ERR", "SET command requires exactly two arguments.");

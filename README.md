@@ -50,10 +50,10 @@ lives in memory and is lost when the process stops.
 
 ## Requirements
 
-- **Java 25** (records, sealed interfaces and pattern matching for `instanceof` are all used).
+- **Java 25+** (records, sealed interfaces and pattern matching for `instanceof` are all used).
 - A Unix-like shell for the `./gradlew` commands below. On Windows, use `gradlew.bat` instead.
 
-The Gradle wrapper uses Gradle 9.7.1 with the Foojay toolchain resolver, so a suitable JDK is
+The Gradle wrapper uses Gradle 9.8+ with the Foojay toolchain resolver, so a suitable JDK is
 downloaded automatically if the one on your `PATH` does not match.
 
 ## Build and test
@@ -65,7 +65,7 @@ Run these from the repository root:
 ./gradlew test
 ```
 
-`./gradlew test` runs 9 JUnit 5 tests in `app/src/test/java/com/capis/Parser/ParserTest.java`. They
+`./gradlew test` runs JUnit 5 tests across the test suite. They
 pin the RESP parser behaviour: simple strings, integers, bulk strings, arrays, nested arrays, a null
 within an array, a partial (split) read returning `null`, and two pipelined commands decoded from one
 buffer.
@@ -352,7 +352,7 @@ app/src/main/java/com/capis/entities/RandomizedList.java     O(1) random samplin
 app/src/main/java/com/capis/entities/Node.java               Cache entry
 app/src/main/java/com/capis/DataTpes/Core/                   Sealed Value interface, its five types, ScoreMember
 app/src/main/java/com/capis/DataTpes/RespValues/             RespValue and its five record types
-app/src/test/java/com/capis/Parser/ParserTest.java           9 RESP parser tests
+app/src/test/java/com/capis/Parser/ParserTest.java           RESP parser tests
 docs/design-decoupling-and-configuration.md                  Design note for the decoupling work
 docs/architecture-research-report.md                         Design report for the same work
 docs/fixing-known-limitations.md                             My running checklist of rough edges and fixes

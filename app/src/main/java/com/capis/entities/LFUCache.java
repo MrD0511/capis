@@ -11,11 +11,11 @@ public class LFUCache<K, V> implements Cache<K, V> {
     private Map<Integer, DoublyLinkedList<K, V>> frequencyMap;
     private int capacity;
     private int minFrequency;
-    private Long NO_EXPIRY = -1L;
+    private final Long NO_EXPIRY = -1L;
     private int purgeLimit = 100;
-    private SortedSet<Integer> frequencySet = new TreeSet<>();
-    private RandomizedList<Node<K, V>> randomizedList = new RandomizedList<>();
-    private Random random = new Random();
+    private final SortedSet<Integer> frequencySet = new TreeSet<>();
+    private final RandomizedList<Node<K, V>> randomizedList = new RandomizedList<>();
+    private final Random random = new Random();
 
 
     public LFUCache(int capacity) {
@@ -39,6 +39,7 @@ public class LFUCache<K, V> implements Cache<K, V> {
         this.purgeLimit = purgeLimit;
     }
 
+    @Override
     public V get(K key){
         Node<K, V> node = map.get(key);
 
@@ -52,10 +53,12 @@ public class LFUCache<K, V> implements Cache<K, V> {
         return node.value;
     }
 
+    @Override
     public void put(K key, V value) {
         putInternal(key, value, NO_EXPIRY);
     }
 
+    @Override
     public void put(K key, V value, long expiryAtMillis) {
         putInternal(key, value, expiryAtMillis);
     }
@@ -126,6 +129,7 @@ public class LFUCache<K, V> implements Cache<K, V> {
         return false;
     }
 
+    @Override
     public V remove(K key){
         Node<K, V> node = map.get(key);
 
@@ -142,15 +146,18 @@ public class LFUCache<K, V> implements Cache<K, V> {
         return node.value;
     }
 
+    @Override
     public boolean containsKey(K key){
         Node<K, V> node = map.get(key);
         return node != null && !removeIfExpired(key, node);
     }
 
+    @Override
     public int size() {
         return map.size();
     }
 
+    @Override
     public void clear() {
         map.clear();
         frequencyMap.clear();
@@ -159,6 +166,7 @@ public class LFUCache<K, V> implements Cache<K, V> {
         minFrequency = 0;
     }
 
+    @Override
     public boolean expire(K key, long ttlMillis) {
         Node<K, V> node = map.get(key);
 
@@ -177,6 +185,7 @@ public class LFUCache<K, V> implements Cache<K, V> {
         return true;
     }
     
+    @Override
     public Long ttlMillis(K key) {
         Node<K, V> node = map.get(key);
 
@@ -191,6 +200,7 @@ public class LFUCache<K, V> implements Cache<K, V> {
         return Math.max(0L, node.expiryAtMillis - System.currentTimeMillis());
     }
 
+    @Override
     public boolean persist(K key) {
         Node<K, V> node = map.get(key);
 
@@ -206,6 +216,7 @@ public class LFUCache<K, V> implements Cache<K, V> {
         return true;
     }
 
+    @Override
     public void purgeExpiredEntries() {
         if (map.isEmpty()) {
             return;
@@ -270,7 +281,7 @@ public class LFUCache<K, V> implements Cache<K, V> {
             if (freq == minFrequency) {
                 minFrequency = frequencySet.isEmpty()
                         ? 0
-                        : frequencySet.first();
+                        : frequencySet.stream().findFirst().orElse(0);
             }
         }
     }

@@ -7,7 +7,7 @@ import com.capis.entities.KeyValueStore;
 
 public class PERSISTCommand implements Command {
     private final String name = "PERSIST";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public PERSISTCommand(KeyValueStore cache) {
         this.cache = cache;

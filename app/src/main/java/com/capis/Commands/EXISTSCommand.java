@@ -7,7 +7,7 @@ import com.capis.entities.KeyValueStore;
 
 public class EXISTSCommand implements Command {
     private final String name = "EXISTS";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public EXISTSCommand(KeyValueStore cache) {
         this.cache = cache;

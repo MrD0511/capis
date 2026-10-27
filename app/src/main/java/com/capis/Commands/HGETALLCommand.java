@@ -14,7 +14,7 @@ import com.capis.entities.KeyValueStore;
 
 public class HGETALLCommand implements Command {
     private final String name = "HGETALL";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public HGETALLCommand(KeyValueStore cache) {
         this.cache = cache;

@@ -2,6 +2,7 @@ package com.capis;
         
 import java.io.IOException;
 
+import com.capis.AOF.AOF;
 import com.capis.Commands.AppendCommand;
 import com.capis.Commands.CommandHandler;
 import com.capis.Commands.CommandRegistry;
@@ -44,9 +45,11 @@ import com.capis.Commands.ZADDCommand;
 import com.capis.Commands.ZRANGECommand;
 import com.capis.Config.AppConfig;
 import com.capis.DataTypes.Core.Value;
+import com.capis.Network.ClientState;
 import com.capis.Network.ClientStateFactory;
 import com.capis.Network.NioServer;
 import com.capis.Parser.Parser;
+import com.capis.Persistence.Persistence;
 import com.capis.entities.Cache;
 import com.capis.entities.CacheFactory;
 import com.capis.entities.KeyValueStore;
@@ -73,10 +76,23 @@ public class Bootstrap {
         addCommandsToRegistry(commandRegistry, keyValueStore);
 
         CommandHandler commandHandler = new CommandHandler(commandRegistry);
+        
 
-        CapisCore capisCore = new CapisCore(parser, commandHandler);
+        AOF aof = new AOF(appConfig.getAofFileName());
+
+        Persistence persistence = new Persistence(aof);
+
+        CapisCore capisCore = new CapisCore(parser, commandHandler, persistence);
 
         ClientStateFactory clientStateFactory = new ClientStateFactory(appConfig.getBufferSize());
+
+        ClientState replayClientState = new ClientState();
+
+        try {
+            persistence.replay(parser, commandHandler, replayClientState);
+        } catch (IOException e) {
+            System.err.println("Error during AOF replay: " + e.getMessage());
+        }
 
         try {
             return new NioServer(this.appConfig.getPort(), 

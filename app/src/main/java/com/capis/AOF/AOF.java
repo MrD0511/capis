@@ -3,6 +3,8 @@ package com.capis.AOF;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class AOF {
 
@@ -10,8 +12,8 @@ public class AOF {
 
     private String fileName;
 
-    public AOF() {
-        this.fileName = "appendonly.aof";
+    public AOF(String fileName) {
+        this.fileName = fileName;
         try {
             openWriter(this.fileName);
         } catch (IOException e) {
@@ -29,7 +31,6 @@ public class AOF {
 
     public void append(String data) throws IOException {
         writer.write(data);
-        writer.newLine();
         writer.flush();
     }
 
@@ -38,5 +39,9 @@ public class AOF {
             writer.close();
             writer = null;
         }
+    }
+
+    public byte[] readAll() throws IOException {
+        return Files.readAllBytes(Paths.get(fileName));
     }
 }

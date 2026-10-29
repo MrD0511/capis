@@ -2,6 +2,9 @@ package com.capis;
 
 import org.junit.jupiter.api.Test;
 
+import com.capis.Config.AppConfig;
+import com.capis.DataTypes.EvictionPolicy;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 

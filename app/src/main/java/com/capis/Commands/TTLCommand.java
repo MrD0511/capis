@@ -8,6 +8,7 @@ import com.capis.entities.KeyValueStore;
 public class TTLCommand implements Command {
     private final String name = "TTL";
     private final KeyValueStore cache;
+    private final boolean changesState = false;
 
     public TTLCommand(KeyValueStore cache) {
         this.cache = cache;
@@ -16,6 +17,11 @@ public class TTLCommand implements Command {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override 
+    public boolean changesState() {
+        return changesState;
     }
 
     @Override
@@ -36,4 +42,5 @@ public class TTLCommand implements Command {
         
         return new RespInteger((int) (ttl / 1000));
     }
+
 }

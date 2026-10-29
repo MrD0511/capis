@@ -15,10 +15,10 @@ public class CapisCore  {
     private final CommandHandler commandHandler;
     private final Persistence persistence;
 
-    public CapisCore(Parser parser, CommandHandler commandHandler) {
+    public CapisCore(Parser parser, CommandHandler commandHandler, Persistence persistence) {
         this.parser = parser;
         this.commandHandler = commandHandler;
-        this.persistence = new Persistence();
+        this.persistence = persistence;
     }
 
     public String handle(ByteBuffer buffer, ClientState clientState) throws Exception {
@@ -40,7 +40,7 @@ public class CapisCore  {
 
             Command command = commandHandler.GetCommand(parsedCommand[0].toUpperCase());
 
-            if(!(result instanceof RespErr)){
+            if(command != null && !(result instanceof RespErr)){
                 persistence.handle(command , parser, parsedCommand);
             }
 

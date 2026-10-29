@@ -12,9 +12,7 @@ import com.capis.entities.KeyValueStore;
 
 public class DECRCommand implements Command{
     private final KeyValueStore cache;
-
     private final String name = "DECR";
-
     private final boolean changesState = true;
 
     public DECRCommand(KeyValueStore cache) {

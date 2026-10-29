@@ -103,4 +103,24 @@ public class RPOPCommand implements Command {
 
         return new RespArray(removedElements);
     }
+
+    @Override
+    public RespValue persistentCommand(String[] args) {
+        if (args == null || (args.length != 2 && args.length != 3)) {
+            return new RespErr(
+                "ERR",
+                "wrong number of arguments for 'RPOP' command"
+            );
+        }
+
+        List<RespValue> respValues = new ArrayList<>();
+
+        respValues.add(new RespBulkString("RPOP"));
+
+        for (int i = 1; i < args.length; i++) {
+            respValues.add(new RespBulkString(args[i]));
+        }
+
+        return new RespArray(respValues);
+    }
 }

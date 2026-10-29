@@ -46,9 +46,11 @@ public class Parser {
             }
 
             String[] arrayResult = result.toArray(String[]::new);
-            
+
             return arrayResult;
         } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Error during parsing: " + e.getMessage());
             return null;
         }
     }

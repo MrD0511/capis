@@ -350,8 +350,8 @@ app/src/main/java/com/capis/entities/LFUCache.java           Frequency-bucketed 
 app/src/main/java/com/capis/entities/DoublyLinkedList.java   Recency / frequency ordering, package private
 app/src/main/java/com/capis/entities/RandomizedList.java     O(1) random sampling for the sweep
 app/src/main/java/com/capis/entities/Node.java               Cache entry
-app/src/main/java/com/capis/DataTpes/Core/                   Sealed Value interface, its five types, ScoreMember
-app/src/main/java/com/capis/DataTpes/RespValues/             RespValue and its five record types
+app/src/main/java/com/capis/DataTypes/Core/                   Sealed Value interface, its five types, ScoreMember
+app/src/main/java/com/capis/DataTypes/RespValues/             RespValue and its five record types
 app/src/test/java/com/capis/Parser/ParserTest.java           RESP parser tests
 docs/design-decoupling-and-configuration.md                  Design note for the decoupling work
 docs/architecture-research-report.md                         Design report for the same work

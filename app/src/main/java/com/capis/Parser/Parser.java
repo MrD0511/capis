@@ -5,12 +5,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.capis.DataTpes.RespValues.RespArray;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespSimpleString;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespSimpleString;
+import com.capis.DataTypes.RespValues.RespValue;
 
 public class Parser {
 
@@ -19,72 +19,36 @@ public class Parser {
         return c == '+' || c == '-' || c == ':' || c == '$' || c == '*';
     }
 
-
-    public ParsedCommand decode(ByteBuffer buffer) {
-        int startPos = buffer.position();
+    // Main entry point for clients
+    public String[] decode(ByteBuffer buffer) {
+        buffer.mark();
 
         try {
-            if (!buffer.hasRemaining()) {
-                return null;
-            }
-
             byte first = buffer.get(buffer.position());
-
-            if (!isRespValue(first)) {
+            if(!isRespValue(first)){
                 String line = readLine(buffer);
+                if(line == null) return null;
 
-                if (line == null || line.isEmpty()) {
-                    buffer.position(startPos);
+                if(line.isEmpty()){     
                     return null;
                 }
 
-                int endPos = buffer.position();
-                ByteBuffer view = buffer.duplicate();
-                view.position(startPos);
-                view.limit(endPos);
-
-                byte[] bytes = new byte[endPos - startPos];
-                view.get(bytes);
-
-                String raw = new String(bytes, StandardCharsets.UTF_8);
-
-                return new ParsedCommand(
-                    line.strip().split("\\s+"),
-                    raw
-                );
+                return line.strip().split("\\s+");
             }
 
             List<String> result = new ArrayList<>();
 
             boolean success = parseElement(buffer, result);
 
-            if (!success) {
-                // Do not use reset(): nested methods overwrite the mark.
-                buffer.position(startPos);
+            if(!success){
+                buffer.reset();
                 return null;
             }
 
-            int endPos = buffer.position();
-
-            ByteBuffer view = buffer.duplicate();
-            view.position(startPos);
-            view.limit(endPos);
-
-            byte[] consumedBytes = new byte[endPos - startPos];
-            view.get(consumedBytes);
-
-            String consumedString =
-                new String(consumedBytes, StandardCharsets.UTF_8);
-
-            return new ParsedCommand(
-                result.toArray(String[]::new),
-                consumedString
-            );
-
+            String[] arrayResult = result.toArray(String[]::new);
+            
+            return arrayResult;
         } catch (Exception e) {
-            // Restore the original position on failure.
-            buffer.position(startPos);
-            e.printStackTrace();
             return null;
         }
     }
@@ -164,7 +128,8 @@ public class Parser {
                 return true;
             }
 
-            case ':' -> { // Integer
+            case ':' -> {
+                // Integer
                 String intLine = readLine(buffer);
 
                 if(intLine == null){
@@ -180,7 +145,8 @@ public class Parser {
                 return true;
             }
 
-            case '$' -> { // Bulk String
+            case '$' -> {
+                // Bulk String
                 String bulkLengthLine = readLine(buffer);
                 if (bulkLengthLine == null) return false;
                 if (bulkLengthLine.isEmpty()) {
@@ -200,7 +166,8 @@ public class Parser {
                 return true;
             }
 
-            case '*' -> { // Array (Recursion magic happens here!)
+            case '*' -> {
+                // Array (Recursion magic happens here!)
                 String arrayLengthLine = readLine(buffer);
                 if (arrayLengthLine == null) return false;
                 if (arrayLengthLine.isEmpty()) {
@@ -222,8 +189,7 @@ public class Parser {
                 return true;
             }
 
-            default ->
-                throw new Exception("Unknown RESP type byte: " + type);
+            default -> throw new Exception("Unknown RESP type byte: " + type);
         }
     }
 

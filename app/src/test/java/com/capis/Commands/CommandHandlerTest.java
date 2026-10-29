@@ -2,12 +2,12 @@ package com.capis.Commands;
 
 import java.util.List;
 
-import com.capis.DataTpes.Core.StringValue;
-import com.capis.DataTpes.RespValues.RespArray;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespSimpleString;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.StringValue;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespSimpleString;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.Network.ClientState;
 import com.capis.entities.KeyValueStore;
 import com.capis.entities.LRUCache;
@@ -27,6 +27,7 @@ class CommandHandlerTest {
     private ClientState clientState;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         store = new KeyValueStore(new LRUCache<>(100, 256));
 

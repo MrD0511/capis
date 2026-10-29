@@ -1,7 +1,7 @@
 package com.capis.entities;
 
-import com.capis.DataTpes.Core.StringValue;
-import com.capis.DataTpes.Core.Value;
+import com.capis.DataTypes.Core.StringValue;
+import com.capis.DataTypes.Core.Value;
 
 public class KeyValueStore {
     private final Cache<String, Value<?>> cache;

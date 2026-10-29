@@ -1,4 +1,4 @@
-package com.capis.DataTpes.RespValues;
+package com.capis.DataTypes.RespValues;
 
 import java.util.List;
 

@@ -2,11 +2,11 @@ package com.capis.Commands;
 
 import java.util.Deque;
 
-import com.capis.DataTpes.Core.ListValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.ListValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class LIndexCommand implements Command {

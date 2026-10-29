@@ -1,4 +1,4 @@
-package com.capis.DataTpes.Core;
+package com.capis.DataTypes.Core;
 
 public final class StringValue implements Value<String> {
     private String value;

@@ -1,4 +1,4 @@
-package com.capis.DataTpes.Core;
+package com.capis.DataTypes.Core;
 
 import java.util.HashSet;
 import java.util.Set;

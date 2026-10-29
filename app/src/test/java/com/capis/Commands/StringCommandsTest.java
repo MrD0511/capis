@@ -1,14 +1,15 @@
 package com.capis.Commands;
 
+import java.util.ArrayDeque;
 import java.util.List;
 
-import com.capis.DataTpes.Core.ListValue;
-import com.capis.DataTpes.RespValues.RespArray;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespSimpleString;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.ListValue;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespSimpleString;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 import com.capis.entities.LRUCache;
 
@@ -71,7 +72,7 @@ class StringCommandsTest {
 
     @Test
     void getOnWrongTypeReturnsWrongTypeError() {
-        store.put("list", new ListValue(List.of("a")));
+        store.put("list", new ListValue(new ArrayDeque<>(List.of("a"))));
 
         assertInstanceOf(RespErr.class, get.execute(new String[]{"GET", "list"}));
     }
@@ -199,7 +200,7 @@ class StringCommandsTest {
 
     @Test
     void wrongTypeIsReportedForStringCommands() {
-        store.put("list", new ListValue(List.of("a")));
+        store.put("list", new ListValue(new ArrayDeque<>(List.of("a"))));
 
         assertInstanceOf(RespErr.class, strlen.execute(new String[]{"STRLEN", "list"}));
         assertInstanceOf(RespErr.class, append.execute(new String[]{"APPEND", "list", "x"}));

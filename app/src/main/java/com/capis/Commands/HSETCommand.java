@@ -3,11 +3,11 @@ package com.capis.Commands;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.capis.DataTpes.Core.HashValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.HashValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class HSETCommand implements Command {

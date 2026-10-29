@@ -43,7 +43,7 @@ import com.capis.Commands.TypeCommand;
 import com.capis.Commands.ZADDCommand;
 import com.capis.Commands.ZRANGECommand;
 import com.capis.Config.AppConfig;
-import com.capis.DataTpes.Core.Value;
+import com.capis.DataTypes.Core.Value;
 import com.capis.Network.ClientStateFactory;
 import com.capis.Network.NioServer;
 import com.capis.Parser.Parser;

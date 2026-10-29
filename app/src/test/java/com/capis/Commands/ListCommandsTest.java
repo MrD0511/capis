@@ -2,10 +2,10 @@ package com.capis.Commands;
 
 import java.util.List;
 
-import com.capis.DataTpes.RespValues.RespArray;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 import com.capis.entities.LRUCache;
 

@@ -2,10 +2,10 @@ package com.capis.Commands;
 
 import java.util.concurrent.TimeUnit;
 
-import com.capis.DataTpes.Core.StringValue;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespSimpleString;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.StringValue;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespSimpleString;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class SETEXCommand implements Command {

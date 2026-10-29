@@ -1,12 +1,12 @@
 package com.capis.entities;
 
+import java.util.ArrayDeque;
 import java.util.List;
 
-import com.capis.DataTpes.Core.ListValue;
-import com.capis.DataTpes.Core.StringValue;
-import com.capis.DataTpes.Core.Value;
+import com.capis.DataTypes.Core.ListValue;
+import com.capis.DataTypes.Core.StringValue;
+import com.capis.DataTypes.Core.Value;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,12 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KeyValueStoreTest {
 
-    private KeyValueStore store;
-
-    @BeforeEach
-    void setUp() {
-        store = new KeyValueStore(new LRUCache<>(100, 256));
-    }
+    private final KeyValueStore store = new KeyValueStore(new LRUCache<>(100, 256));
 
     @Test
     void putGetRemoveRoundTrip() {
@@ -70,14 +65,16 @@ class KeyValueStoreTest {
     void incrementRejectsNonNumericValue() {
         store.put("counter", new StringValue("abc"));
 
-        assertThrows(IllegalArgumentException.class, () -> store.increment("counter"));
+        assertTrue(assertThrows(IllegalArgumentException.class, () -> store.increment("counter"))
+            instanceof IllegalArgumentException);
     }
 
     @Test
     void incrementRejectsNonStringValue() {
-        store.put("list", new ListValue(List.of("x")));
+        store.put("list", new ListValue(new ArrayDeque<>(List.of("x"))));
 
-        assertThrows(IllegalArgumentException.class, () -> store.increment("list"));
+        assertTrue(assertThrows(IllegalArgumentException.class, () -> store.increment("list"))
+            instanceof IllegalArgumentException);
     }
 
     @Test

@@ -1,4 +1,4 @@
-package com.capis.DataTpes.Core;
+package com.capis.DataTypes.Core;
 
 import java.util.SortedSet;
 import java.util.TreeSet;

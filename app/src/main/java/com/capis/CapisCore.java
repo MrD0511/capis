@@ -2,39 +2,47 @@ package com.capis;
 
 import java.nio.ByteBuffer;
 
+import com.capis.Commands.Command;
 import com.capis.Commands.CommandHandler;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.Network.ClientState;
-import com.capis.Parser.ParsedCommand;
 import com.capis.Parser.Parser;
+import com.capis.Persistence.Persistence;
 
 public class CapisCore  {
     private final Parser parser;
     private final CommandHandler commandHandler;
+    private final Persistence persistence;
 
     public CapisCore(Parser parser, CommandHandler commandHandler) {
         this.parser = parser;
         this.commandHandler = commandHandler;
+        this.persistence = new Persistence();
     }
 
     public String handle(ByteBuffer buffer, ClientState clientState) throws Exception {
         StringBuilder output = new StringBuilder();
 
         while(buffer.hasRemaining()){
-            ParsedCommand parsedValue = parser.decode(buffer);
+            String[] parsedCommand = parser.decode(buffer);
 
-            if(parsedValue == null){
+            if(parsedCommand == null){
                 break;
             }
 
-            if(parsedValue.getCommand().length == 0){
+            if(parsedCommand.length == 0){
                 output.append(parser.encode(new RespErr("ERR", "empty command")));
+                continue;
             }
 
-            RespValue result = commandHandler.execute(parsedValue.getCommand(), clientState);
+            RespValue result = commandHandler.execute(parsedCommand, clientState);
 
-            System.out.println("parsed resp: " + parsedValue.getResp());
+            Command command = commandHandler.GetCommand(parsedCommand[0].toUpperCase());
+
+            if(!(result instanceof RespErr)){
+                persistence.handle(command , parser, parsedCommand);
+            }
 
             output.append(parser.encode(result));
         }

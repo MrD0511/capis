@@ -1,9 +1,9 @@
 package com.capis.Commands;
 
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespSimpleString;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespSimpleString;
+import com.capis.DataTypes.RespValues.RespValue;
 
 public class EchoCommand implements Command {
     String name = "ECHO";

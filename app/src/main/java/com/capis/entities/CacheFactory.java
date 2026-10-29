@@ -1,7 +1,7 @@
 package com.capis.entities;
 
 
-import com.capis.DataTpes.Core.Value;
+import com.capis.DataTypes.Core.Value;
 import com.capis.DataTypes.EvictionPolicy;
 
 public class CacheFactory {

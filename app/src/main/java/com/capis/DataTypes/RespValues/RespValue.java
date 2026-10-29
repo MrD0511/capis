@@ -1,4 +1,4 @@
-package com.capis.DataTpes.RespValues;
+package com.capis.DataTypes.RespValues;
 
 public interface RespValue {
 

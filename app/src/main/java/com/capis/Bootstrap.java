@@ -1,13 +1,16 @@
 package com.capis;
+        
+import java.io.IOException;
 
-import com.capis.Commands.CommandRegistry;
 import com.capis.Commands.AppendCommand;
+import com.capis.Commands.CommandHandler;
+import com.capis.Commands.CommandRegistry;
 import com.capis.Commands.DBSIZECommand;
 import com.capis.Commands.DECRCommand;
 import com.capis.Commands.DELCommand;
+import com.capis.Commands.EXISTSCommand;
 import com.capis.Commands.EXPIRECommand;
 import com.capis.Commands.EchoCommand;
-import com.capis.Commands.EXISTSCommand;
 import com.capis.Commands.FLUSHALLCommand;
 import com.capis.Commands.GETDELCommand;
 import com.capis.Commands.GetCommand;
@@ -29,30 +32,31 @@ import com.capis.Commands.RPOPCommand;
 import com.capis.Commands.RPushCommand;
 import com.capis.Commands.SADDCommand;
 import com.capis.Commands.SCARDCommand;
-import com.capis.Commands.SetCommand;
 import com.capis.Commands.SETEXCommand;
 import com.capis.Commands.SISMEMBERCommand;
 import com.capis.Commands.SMEMBERSCommand;
 import com.capis.Commands.SREMCommand;
 import com.capis.Commands.STRLENCommand;
+import com.capis.Commands.SetCommand;
 import com.capis.Commands.TTLCommand;
 import com.capis.Commands.TypeCommand;
 import com.capis.Commands.ZADDCommand;
 import com.capis.Commands.ZRANGECommand;
-import com.capis.Commands.CommandHandler;
-import com.capis.DataTpes.Core.Value;
+import com.capis.Config.AppConfig;
+import com.capis.DataTypes.Core.Value;
+import com.capis.FileSystem.FileSystem;
+import com.capis.Network.ClientState;
 import com.capis.Network.ClientStateFactory;
 import com.capis.Network.NioServer;
 import com.capis.Parser.Parser;
+import com.capis.Persistence.Persistence;
 import com.capis.entities.Cache;
 import com.capis.entities.CacheFactory;
 import com.capis.entities.KeyValueStore;
 
 public class Bootstrap {
 
-
-    
-    private AppConfig appConfig;
+    private final AppConfig appConfig;
 
     public Bootstrap(AppConfig appConfig) {
         this.appConfig = appConfig;
@@ -72,19 +76,31 @@ public class Bootstrap {
         addCommandsToRegistry(commandRegistry, keyValueStore);
 
         CommandHandler commandHandler = new CommandHandler(commandRegistry);
+        
 
-        CapisCore capisCore = new CapisCore(parser, commandHandler);
+        FileSystem fileSystem = new FileSystem(appConfig.getAofFileName());
+
+        Persistence persistence = new Persistence(fileSystem);
+
+        CapisCore capisCore = new CapisCore(parser, commandHandler, persistence);
 
         ClientStateFactory clientStateFactory = new ClientStateFactory(appConfig.getBufferSize());
+
+        ClientState replayClientState = new ClientState();
+
+        try {
+            persistence.replay(parser, commandHandler, replayClientState);
+        } catch (IOException e) {
+            System.err.println("Error during AOF replay: " + e.getMessage());
+        }
 
         try {
             return new NioServer(this.appConfig.getPort(), 
                                 capisCore, 
                                 maintainanceService, 
                                 clientStateFactory);
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.err.println("Error starting server:");
-            e.printStackTrace();
             return null;
         }
     }

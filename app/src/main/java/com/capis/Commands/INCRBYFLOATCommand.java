@@ -1,15 +1,19 @@
 package com.capis.Commands;
 
-import com.capis.DataTpes.Core.StringValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespValue;
+import java.util.Arrays;
+
+import com.capis.DataTypes.Core.StringValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class INCRBYFLOATCommand implements Command {
     private final String name = "INCRBYFLOAT";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
+    private final boolean changesState = true;
 
     public INCRBYFLOATCommand(KeyValueStore cache) {
         this.cache = cache;
@@ -18,6 +22,11 @@ public class INCRBYFLOATCommand implements Command {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override 
+    public boolean changesState() {
+        return changesState;
     }
 
     @Override
@@ -35,8 +44,6 @@ public class INCRBYFLOATCommand implements Command {
         }
 
         Value<?> existing = cache.get(args[1]);
-
-
 
         if(existing != null && !(existing instanceof StringValue)) {
             return new RespErr("ERR", "WRONGTYPE Operation against a key holding the wrong kind of value");
@@ -77,5 +84,19 @@ public class INCRBYFLOATCommand implements Command {
             return Long.toString((long) score);
         }
         return Double.toString(score);
+    }
+
+    public RespValue persistentCommand(String[] args) {
+        if(args == null || args.length != 3){
+            return new RespErr("ERR", "wrong number of arguments for '" + name + "' command");
+        }
+
+        return new RespArray(
+            Arrays.asList(
+                new RespBulkString(args[0]),
+                new RespBulkString(args[1]),
+                new RespBulkString(args[2])
+            )
+        );
     }
 }

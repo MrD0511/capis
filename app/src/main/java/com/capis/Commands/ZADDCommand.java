@@ -2,17 +2,17 @@ package com.capis.Commands;
 
 import java.util.TreeSet;
 
-import com.capis.DataTpes.Core.ScoreMember;
-import com.capis.DataTpes.Core.SortedSetValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.ScoreMember;
+import com.capis.DataTypes.Core.SortedSetValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class ZADDCommand implements Command {
     private final String name = "ZADD";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public ZADDCommand(KeyValueStore cache) {
         this.cache = cache;

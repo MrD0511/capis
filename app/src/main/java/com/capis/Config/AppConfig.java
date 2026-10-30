@@ -1,16 +1,20 @@
-package com.capis;
+package com.capis.Config;
+
+import com.capis.DataTypes.EvictionPolicy;
+
 
 public class AppConfig {
-    private int port;
-    private int maxConnections;
-    private int capacity;
-    private int bufferSize;
-    private EvictionPolicy evictionPolicy;
+    private final int port;
+    private final  int maxConnections;
+    private final int capacity;
+    private final int bufferSize;
+    private final EvictionPolicy evictionPolicy;
+    private final String aofFileName;
 
     private static final int MIN_PURGE_LIMIT = 16;
     private static final int MAX_PURGE_LIMIT = 256;
 
-    private int purgeLimit;
+    private final int purgeLimit;
 
     private AppConfig(Builder builder) {
         this.port = builder.port;
@@ -19,6 +23,7 @@ public class AppConfig {
         this.bufferSize = builder.bufferSize;
         this.evictionPolicy = builder.evictionPolicy;
         this.purgeLimit = builder.purgeLimit;
+        this.aofFileName = builder.aofFileName; // Default AOF file name
     }
 
     public int getPort() {
@@ -45,6 +50,10 @@ public class AppConfig {
         return evictionPolicy;
     }
 
+    public String getAofFileName() {
+        return aofFileName;
+    }
+
     public static class Builder {
         private int port = 6379; // Default Redis port
         private int maxConnections = 100; // Default max connections
@@ -52,6 +61,7 @@ public class AppConfig {
         private int bufferSize = 16 * 1024; // Default buffer size
         private EvictionPolicy evictionPolicy = EvictionPolicy.LRU; // Default eviction policy
         private int purgeLimit = -1; // Default purge limit, will be calculated based on capacity
+        private String aofFileName = "appendonly.aof"; // Default AOF file name
 
         public Builder setPort(int port) {
             if(port < 0 || port > 65535) {
@@ -97,6 +107,14 @@ public class AppConfig {
                 throw new IllegalArgumentException("Purge limit must be non-negative");
             }
             this.purgeLimit = purgeLimit;
+            return this;
+        }
+
+        public Builder setAofFileName(String aofFileName) {
+            if(aofFileName == null || aofFileName.isEmpty()) {
+                throw new IllegalArgumentException("AOF file name cannot be null or empty");
+            }
+            this.aofFileName = aofFileName;
             return this;
         }
 

@@ -3,26 +3,28 @@ package com.capis.Commands;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.capis.DataTpes.Core.SetValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespArray;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.SetValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class SMEMBERSCommand implements Command {
     private final String name = "SMEMBERS";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public SMEMBERSCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args){
         if(args == null || args.length != 2){
             return new RespErr("ERR", "wrong number of arguments for 'SMEMBERS' command");

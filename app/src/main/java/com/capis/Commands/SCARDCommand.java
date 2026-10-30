@@ -1,10 +1,10 @@
 package com.capis.Commands;
 
-import com.capis.DataTpes.Core.SetValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.SetValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class SCARDCommand implements Command {
@@ -15,10 +15,12 @@ public class SCARDCommand implements Command {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args){
         if(args == null || args.length != 2){
             return new RespErr("ERR", "wrong number of arguments for 'SCARD' command");

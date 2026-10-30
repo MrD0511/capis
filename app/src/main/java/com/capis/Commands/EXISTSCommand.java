@@ -1,13 +1,13 @@
 package com.capis.Commands;
 
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class EXISTSCommand implements Command {
     private final String name = "EXISTS";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public EXISTSCommand(KeyValueStore cache) {
         this.cache = cache;

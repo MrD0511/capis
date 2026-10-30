@@ -3,11 +3,11 @@ package com.capis.Commands;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.capis.DataTpes.RespValues.RespArray;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 
 public class HELLOCommand implements Command {
     private final String commandName = "HELLO";
@@ -30,7 +30,7 @@ public class HELLOCommand implements Command {
             new RespBulkString("id"),      new RespInteger(1),
             new RespBulkString("mode"),    new RespBulkString("standalone"),
             new RespBulkString("role"),    new RespBulkString("master"),
-            new RespBulkString("modules"), new RespArray(new ArrayList<RespValue>())
+            new RespBulkString("modules"), new RespArray(new ArrayList<>())
         ));
     }
 }

@@ -3,16 +3,16 @@ package com.capis.Commands;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.capis.DataTpes.Core.HashValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.HashValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class HSETCommand implements Command {
     private final String name = "HSET";
-    private KeyValueStore cache;
+    private final KeyValueStore cache;
 
     public HSETCommand(KeyValueStore cache) {
         this.cache = cache;
@@ -36,8 +36,8 @@ public class HSETCommand implements Command {
         if(existing == null) {
             hash = new HashValue(new HashMap<>());
             cache.put(args[1], hash);
-        } else if(existing instanceof HashValue) {
-            hash = (HashValue) existing;
+        } else if(existing instanceof HashValue hashValue) {
+            hash = hashValue;
         } else {
             return new RespErr("ERR", "WRONGTYPE Operation against a key holding the wrong kind of value");
         }

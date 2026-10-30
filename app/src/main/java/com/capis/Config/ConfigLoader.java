@@ -1,23 +1,29 @@
-package com.capis;
+package com.capis.Config;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
 import java.util.Properties;
+
+import com.capis.DataTypes.EvictionPolicy;
+
 
 public class ConfigLoader {
 
-    private Map<String, String> configMap;
+    private final Map<String, String> configMap;
     private static final String CONFIG_FILE_PATH = "config.properties";
 
     public ConfigLoader() {
         this.configMap = new HashMap<>();
-        loadFromFile();
+        loadFromFileInternal();
     }
 
     public void loadFromFile() {
+        loadFromFileInternal();
+    }
+
+    private void loadFromFileInternal() {
 
         Properties props = new Properties();
 
@@ -32,30 +38,23 @@ public class ConfigLoader {
     }
 
     public AppConfig load(String[] args) {
-        Map<String, String> configMap = this.parseArgs(args);
+        Map<String, String> parsedConfig = this.parseArgs(args);
 
         AppConfig.Builder builder = new AppConfig.Builder();
 
-        configMap.forEach((key, value) -> {
+        parsedConfig.forEach((key, value) -> {
             switch (key) {
-                case "port" ->
-                    builder.setPort(Integer.parseInt(value));
-                case "maxConnections" ->
-                    builder.setMaxConnections(Integer.parseInt(value));
-                case "capacity" ->
-                    builder.setCapacity(Integer.parseInt(value));
-                case "bufferSize" ->
-                    builder.setBufferSize(Integer.parseInt(value));
-                case "evictionPolicy" ->
-                    builder.setEvictionPolicy(
-                        EvictionPolicy.valueOf(value.toUpperCase())
-                    );
-                case "purgeLimit" ->
-                    builder.setPurgeLimit(Integer.parseInt(value));
-                default ->
-                    throw new IllegalArgumentException(
-                        "Unknown configuration option: --" + key
-                    );
+                case "port" -> builder.setPort(Integer.parseInt(value));
+                case "maxConnections" -> builder.setMaxConnections(Integer.parseInt(value));
+                case "capacity" -> builder.setCapacity(Integer.parseInt(value));
+                case "bufferSize" -> builder.setBufferSize(Integer.parseInt(value));
+                case "evictionPolicy" -> builder.setEvictionPolicy(
+                    EvictionPolicy.valueOf(value.toUpperCase())
+                );
+                case "purgeLimit" -> builder.setPurgeLimit(Integer.parseInt(value));
+                default -> throw new IllegalArgumentException(
+                    "Unknown configuration option: --" + key
+                );
             }
         });
 

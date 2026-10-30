@@ -1,10 +1,10 @@
 package com.capis.Commands;
 
-import java.util.List;
+import java.util.ArrayDeque;
 
-import com.capis.DataTpes.Core.ListValue;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespSimpleString;
+import com.capis.DataTypes.Core.ListValue;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespSimpleString;
 import com.capis.entities.KeyValueStore;
 import com.capis.entities.LRUCache;
 
@@ -27,6 +27,7 @@ class KeyCommandsTest {
     private PERSISTCommand persist;
 
     @BeforeEach
+    @SuppressWarnings("unused")
     void setUp() {
         store = new KeyValueStore(new LRUCache<>(100, 256));
         set = new SetCommand(store);
@@ -66,7 +67,7 @@ class KeyCommandsTest {
         assertEquals(new RespSimpleString("string"),
                 type.execute(new String[]{"TYPE", "a"}));
 
-        store.put("list", new ListValue(List.of("x")));
+        store.put("list", new ListValue(new ArrayDeque<>(java.util.List.of("x"))));
         assertEquals(new RespSimpleString("list"),
                 type.execute(new String[]{"TYPE", "list"}));
 
@@ -94,7 +95,7 @@ class KeyCommandsTest {
     @Test
     void expireRejectsNegativeSeconds() {
         assertEquals("ERR",
-                ((com.capis.DataTpes.RespValues.RespErr) expire.execute(
+                ((com.capis.DataTypes.RespValues.RespErr) expire.execute(
                         new String[]{"EXPIRE", "a", "-1"})).type());
     }
 

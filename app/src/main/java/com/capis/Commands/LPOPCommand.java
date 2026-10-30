@@ -2,15 +2,14 @@ package com.capis.Commands;
 
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 
-import com.capis.DataTpes.Core.ListValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespArray;
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.ListValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class LPOPCommand implements Command {
@@ -103,5 +102,25 @@ public class LPOPCommand implements Command {
         }
 
         return new RespArray(removedElements);
+    }
+
+    @Override 
+    public RespValue persistentCommand(String[] args) {
+        if (args == null || (args.length != 2 && args.length != 3)) {
+            return new RespErr(
+                "ERR",
+                "wrong number of arguments for 'LPOP' command"
+            );
+        }
+
+        List<RespValue> respValues = new ArrayList<>();
+
+        respValues.add(new RespBulkString("LPOP"));
+
+        for (int i = 1; i < args.length; i++) {
+            respValues.add(new RespBulkString(args[i]));
+        }
+
+        return new RespArray(respValues);
     }
 }

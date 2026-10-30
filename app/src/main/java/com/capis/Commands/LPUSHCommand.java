@@ -1,19 +1,24 @@
 package com.capis.Commands;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 
-import com.capis.DataTpes.Core.ListValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.ListValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespArray;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class LPUSHCommand implements Command {
 
     private final String name = "LPUSH";
     private final KeyValueStore cache;
+    private final boolean changesState = true;
 
     public LPUSHCommand(KeyValueStore cache) {
         this.cache = cache;
@@ -22,6 +27,11 @@ public class LPUSHCommand implements Command {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override 
+    public boolean changesState() {
+        return changesState;
     }
 
     @Override
@@ -43,8 +53,8 @@ public class LPUSHCommand implements Command {
         if(existing == null){
             listValue = new ListValue(new ArrayDeque<>());
             cache.put(key, listValue);
-        } else if(existing instanceof ListValue ){
-            listValue = (ListValue) existing;
+        } else if(existing instanceof ListValue listValue1 ){
+            listValue = listValue1;
         }else{
             return new RespErr(
                 "ERR",
@@ -68,5 +78,25 @@ public class LPUSHCommand implements Command {
         }
 
         return new RespInteger(list.size());
+    }
+
+    @Override 
+    public RespValue persistentCommand(String[] args) {
+        if (args == null || args.length < 3) {
+            return new RespErr(
+                "ERR",
+                "wrong number of arguments for 'lpush' command"
+            );
+        }
+
+        List<RespValue> respValues = new ArrayList<>();
+
+        respValues.add(new RespBulkString("LPUSH"));
+
+        for (int i = 1; i < args.length; i++) {
+            respValues.add(new RespBulkString(args[i]));
+        }
+
+        return new RespArray(respValues);
     }
 }

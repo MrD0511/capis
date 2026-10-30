@@ -1,24 +1,24 @@
 package com.capis.Commands;
 
-import com.capis.DataTpes.RespValues.RespBulkString;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespSimpleString;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.RespValues.RespBulkString;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespSimpleString;
+import com.capis.DataTypes.RespValues.RespValue;
 
 public class PingCommand implements Command {
-    String name = "PING";
+    private final String name = "PING";
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public RespValue execute(String[] args) {
-        if (args.length == 1) {
-            return new RespSimpleString("PONG");
-        } else if (args.length == 2) {
-            return new RespBulkString(args[1]);
-        } else {
-            return new RespErr("ERR", "PING command takes at most one argument.");
-        }
+        return switch (args.length) {
+            case 1 -> new RespSimpleString("PONG");
+            case 2 -> new RespBulkString(args[1]);
+            default -> new RespErr("ERR", "PING command takes at most one argument.");
+        };
     }
 }

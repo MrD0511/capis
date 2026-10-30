@@ -3,26 +3,27 @@ package com.capis.Commands;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.capis.DataTpes.Core.SetValue;
-import com.capis.DataTpes.Core.Value;
-import com.capis.DataTpes.RespValues.RespErr;
-import com.capis.DataTpes.RespValues.RespInteger;
-import com.capis.DataTpes.RespValues.RespValue;
+import com.capis.DataTypes.Core.SetValue;
+import com.capis.DataTypes.Core.Value;
+import com.capis.DataTypes.RespValues.RespErr;
+import com.capis.DataTypes.RespValues.RespInteger;
+import com.capis.DataTypes.RespValues.RespValue;
 import com.capis.entities.KeyValueStore;
 
 public class SADDCommand implements Command {
-    KeyValueStore cache;
-    String name = "SADD";
+    private final KeyValueStore cache;
+    private final String name = "SADD";
 
     public SADDCommand(KeyValueStore cache) {
         this.cache = cache;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
-
+    @Override
     public RespValue execute(String[] args){
         if(args == null || args.length < 3){
             return new RespErr("ERR", "wrong number of arguments for 'SADD' command");

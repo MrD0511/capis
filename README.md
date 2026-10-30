@@ -11,8 +11,9 @@ doubly linked list (LRU by default, with an LFU variant you can select), and the
 single-threaded, non-blocking I/O loop on top of `java.nio`.
 
 The wiring has since been pulled apart into a small composition root (`Bootstrap`), a validated
-configuration object (`AppConfig`) and a `--key=value` CLI loader, so the port, capacity and
-eviction policy are chosen at startup instead of being scattered literals.
+configuration object (`AppConfig`) and a configuration loader, so the port, capacity and eviction
+policy are chosen at startup instead of being scattered literals. The loader accepts `--key=value`
+arguments and also reads `config.properties` when that file is present.
 
 I want to be upfront: **this was never meant to replace Redis.** It is a learning project, and I am
 happy with the scope it has reached. Everything below is what it is (and isn't) as of now.
@@ -24,6 +25,9 @@ happy with the scope it has reached. Everything below is what it is (and isn't) 
   instead of being thrown away.
 - **A command registry**: 38 commands are registered into a `CommandRegistry`, each a `Command`
   implementation dispatched by name, plus `MULTI`, `EXEC` and `DISCARD` handled by `CommandHandler`.
+- **Append-only persistence**: `FileSystem` owns `appendonly.aof`, and `Persistence` appends each
+  successful state-changing command as RESP and replays the log through the command handler at
+  startup. It is opt-in per command and still partial (see [Known limitations](#known-limitations)).
 - **Per-connection transactions**: `MULTI` starts a queue on the connection's `ClientState`,
   subsequent commands reply `QUEUED`, and `EXEC` runs them in order and returns the array of results.
 - **Five data types** in a sealed `Value` hierarchy: strings, lists, sets, hashes and sorted sets.
@@ -38,19 +42,22 @@ happy with the scope it has reached. Everything below is what it is (and isn't) 
   after the select batch — capped at 100 per pass — so one chatty client cannot starve the rest of
   the loop. A failing command or a dropped socket tears down only that connection.
 - **Startup configuration**: `AppConfig` holds validated values, `ConfigLoader` reads them from
-  `--key=value` arguments, and `Bootstrap` is the single place that wires everything together.
+	`config.properties` and `--key=value` arguments, and `Bootstrap` is the single place that wires
+	everything together.
   Not every knob is honoured yet — see [Known limitations](#known-limitations).
 - **Pipelining and inline commands** both work: several RESP commands written in one `write()` all get
   a reply, and a plain line like `PING\r\n` is accepted as an inline command.
 - **`WRONGTYPE` errors** when a command is applied to the wrong data type.
 - **Unknown commands** reply `-ERR Unknown command '<NAME>'` rather than a bare `+OK`.
 
-That said, there is no persistence, no replication, no authentication and no clustering. All data
-lives in memory and is lost when the process stops.
+That said, there is no replication, no authentication and no clustering. Persistence is a small
+append-only log (`appendonly.aof`) built around `FileSystem` and `Persistence`, not a
+Redis-compatible AOF implementation: only state-changing commands that opt in are recorded, and
+startup replay is a plain re-execution of the recorded commands.
 
 ## Requirements
 
-- **Java 25** (records, sealed interfaces and pattern matching for `instanceof` are all used).
+- **Java 26** (records, sealed interfaces and pattern matching for `instanceof` are all used).
 - A Unix-like shell for the `./gradlew` commands below. On Windows, use `gradlew.bat` instead.
 
 The Gradle wrapper uses Gradle 9.7.1 with the Foojay toolchain resolver, so a suitable JDK is
@@ -65,10 +72,12 @@ Run these from the repository root:
 ./gradlew test
 ```
 
-`./gradlew test` runs 9 JUnit 5 tests in `app/src/test/java/com/capis/Parser/ParserTest.java`. They
+`./gradlew test` runs JUnit 5 tests across the test suite. They
 pin the RESP parser behaviour: simple strings, integers, bulk strings, arrays, nested arrays, a null
 within an array, a partial (split) read returning `null`, and two pipelined commands decoded from one
-buffer.
+buffer. The suite also covers `AppConfig` and `ConfigLoader`, command dispatch and transactions, the
+connection, key, string and list commands, the key-value store, both cache implementations and
+`RandomizedList`. Persistence does not have tests yet.
 
 The `org.graalvm.buildtools.native` plugin is also applied, so `./gradlew nativeCompile` produces a
 GraalVM native image called `redis-java-clone` (built `-O3` with `--no-fallback`).
@@ -82,7 +91,8 @@ GraalVM native image called `redis-java-clone` (built `-O3` with `--no-fallback`
 The server prints its banner and then blocks on the event loop until you stop it with `Ctrl+C`. It
 binds TCP port `6379`, so stop any other Redis or CAPIS instance first.
 
-Startup values come from `ConfigLoader`, which accepts `--key=value` arguments:
+Startup values come from `ConfigLoader`. It reads `config.properties` from the working directory when
+present, and accepts `--key=value` arguments:
 
 ```sh
 ./gradlew run --args="--port=6380 --capacity=50000 --evictionPolicy=LFU"
@@ -97,8 +107,9 @@ Startup values come from `ConfigLoader`, which accepts `--key=value` arguments:
 | `--bufferSize` | `16384` | Initial size of each connection's input and output buffers; the input side grows on demand up to 64 MB. |
 | `--maxConnections` | `100` | Parsed and validated, but not enforced yet. |
 
-An unknown option, a duplicate option or a malformed `--key=value` throws. `AppConfig.Builder`
-validates ranges before the server is built.
+An unknown option, a duplicate option or a malformed `--key=value` throws. Properties use the same
+option names without the leading `--`; duplicate keys across the file and command line are rejected.
+`AppConfig.Builder` validates ranges before the server is built.
 
 If `redis-cli` is installed, connect from another terminal:
 
@@ -153,8 +164,8 @@ valkey-benchmark -p 6379 -t ping_inline,ping_mbulk,set,get,incr,lpush,rpush,lpop
 
 ### Results
 
-These numbers predate the config refactor, so treat them as a rough shape rather than a current
-baseline.
+These numbers predate the config refactor and the persistence changes, so treat them as a rough shape
+rather than a current baseline.
 
 | Command | Requests/sec | p50 (ms) |
 |---|---:|---:|
@@ -287,16 +298,17 @@ Expiry has two halves. On the read side, `get`, `containsKey`, `remove`, `expire
 `persist` all check a node's deadline and drop it the moment it is touched. On top of that, the event
 loop asks `MaintainanceService` to call `KeyValueStore.purgeExpiredEntries()` once per iteration,
 before it processes the ready keys. The sweep is randomized: both caches keep their entries in a
-`RandomizedList`, and each pass samples up to the cache's `purgeLimit` entries (currently still the
-class default of 100) instead of walking the whole keyspace. It is a piggyback strategy: no extra
-thread, no timer, nothing to coordinate with the single-threaded model.
+`RandomizedList`, and each pass samples up to the configured `purgeLimit` entries instead of walking
+the whole keyspace. It is a piggyback strategy: no extra thread, no timer, nothing to coordinate with
+the single-threaded model.
 
 ## Request lifecycle
 
 1. `Bootstrap` is the composition root: it builds the `Cache` via `CacheFactory`, wraps it in a
    `KeyValueStore` and a `MaintainanceService`, creates the `Parser` and `CommandRegistry`, registers
-   all 38 commands, builds the `CommandHandler` and `CapisCore`, creates a `ClientStateFactory` from
-   the configured `bufferSize`, and finally the `NioServer`.
+	all 38 commands, builds the `CommandHandler` and `CapisCore`, creates a `FileSystem` and a
+	`Persistence` service plus a `ClientStateFactory` from the configured `bufferSize`, replays the
+	AOF, and finally creates the `NioServer`.
 2. `NioServer` accepts a client, asks the `ClientStateFactory` for a `ClientState` (which owns an
    input and an output `ByteBuffer`), and registers the channel with a `Selector` for read readiness,
    attaching the state to the key.
@@ -319,6 +331,10 @@ thread, no timer, nothing to coordinate with the single-threaded model.
 7. `CommandHandler.execute` upper-cases the first argument. `MULTI`/`EXEC`/`DISCARD` are handled
    inline; otherwise the name is looked up in the `CommandRegistry`, or — if the connection is inside
    a transaction — the command is queued and `+QUEUED` is returned.
+8. Back in `CapisCore`, if the command was found, declares `changesState()` and its reply was not an
+   error, `Persistence.handle` asks it for a `persistentCommand` representation, `Parser.encode`s
+   that, and `FileSystem.append` writes it to `appendonly.aof`. Startup replay decodes each recorded
+   array and runs it through `CommandHandler` without writing it back.
 
 Replies are never written from the decode path; they wait in the output buffer until the next
 writable event, which is what keeps a slow reader from blocking command processing.
@@ -327,10 +343,10 @@ writable event, which is what keeps a slow reader from blocking command processi
 
 ```text
 app/src/main/java/com/capis/App.java                         Entry point, prints the banner
-app/src/main/java/com/capis/AppConfig.java                   Validated config + builder + defaults
+app/src/main/java/com/capis/Config/AppConfig.java             Validated config + builder + defaults
 app/src/main/java/com/capis/Banner.java                      ASCII banner + startup summary box
-app/src/main/java/com/capis/ConfigLoader.java                Parses --key=value CLI arguments
-app/src/main/java/com/capis/EvictionPolicy.java              LRU / LFU enum
+app/src/main/java/com/capis/Config/ConfigLoader.java          Reads config.properties and parses --key=value arguments
+app/src/main/java/com/capis/DataTypes/EvictionPolicy.java    LRU / LFU enum
 app/src/main/java/com/capis/Bootstrap.java                   Composition root, wires everything
 app/src/main/java/com/capis/CapisCore.java                   Decode / execute / encode facade
 app/src/main/java/com/capis/MaintainanceService.java         Runs the expiry sweep each loop
@@ -339,6 +355,8 @@ app/src/main/java/com/capis/Network/ClientState.java         Per-connection inpu
 app/src/main/java/com/capis/Network/ClientStateFactory.java  Builds ClientState with the configured buffer size
 app/src/main/java/com/capis/Network/Task.java                Queued read: channel + state, drained after select
 app/src/main/java/com/capis/Parser/Parser.java               RESP decoding and encoding
+app/src/main/java/com/capis/FileSystem/FileSystem.java       Buffered append/read for the AOF file
+app/src/main/java/com/capis/Persistence/Persistence.java     Records state changes and replays the AOF
 app/src/main/java/com/capis/Commands/                        Command interface, handler, one class per command
 app/src/main/java/com/capis/Commands/CommandRegistry.java    Name -> Command lookup
 app/src/main/java/com/capis/Commands/TransactionManager.java MULTI/EXEC/DISCARD queueing
@@ -350,23 +368,18 @@ app/src/main/java/com/capis/entities/LFUCache.java           Frequency-bucketed 
 app/src/main/java/com/capis/entities/DoublyLinkedList.java   Recency / frequency ordering, package private
 app/src/main/java/com/capis/entities/RandomizedList.java     O(1) random sampling for the sweep
 app/src/main/java/com/capis/entities/Node.java               Cache entry
-app/src/main/java/com/capis/DataTpes/Core/                   Sealed Value interface, its five types, ScoreMember
-app/src/main/java/com/capis/DataTpes/RespValues/             RespValue and its five record types
-app/src/test/java/com/capis/Parser/ParserTest.java           9 RESP parser tests
-docs/design-decoupling-and-configuration.md                  Design note for the decoupling work
-docs/architecture-research-report.md                         Design report for the same work
-docs/fixing-known-limitations.md                             My running checklist of rough edges and fixes
+app/src/main/java/com/capis/DataTypes/Core/                   Sealed Value interface, its five types, ScoreMember
+app/src/main/java/com/capis/DataTypes/RespValues/             RespValue and its five record types
+app/src/test/java/com/capis/AppConfigTest.java               Config defaults, validation, purge limit
+app/src/test/java/com/capis/ConfigLoaderTest.java            Argument parsing and file loading
+app/src/test/java/com/capis/Commands/                        Connection/key/string/list + handler tests
+app/src/test/java/com/capis/entities/                        Store, cache and randomized-list tests
+app/src/test/java/com/capis/Parser/ParserTest.java           RESP parser tests
 gradle/wrapper/                                              Gradle wrapper files
 ```
 
-`docs/design-decoupling-and-configuration.md` and `docs/architecture-research-report.md` are the
-design write-ups behind the `Bootstrap`/`AppConfig` refactor. They are proposals, not a description
-of the code as shipped: the port/session seams they describe are only partly in place, and the
-configuration is CLI-only for now.
-
-`docs/fixing-known-limitations.md` is my working notebook on the project's rough edges: for each one
-it records the symptom, the root cause with a `file:line` pointer, and the fix I have in mind. It is
-a plan, not a promise — some entries are already done and the notes lag behind the code in places.
+`docs/` is in `.gitignore`, so the design notes and rough-edge checklists I keep there are local only
+and are not part of the repository.
 
 ## Known limitations
 
@@ -389,25 +402,27 @@ is a knock on the project; it is just the current scope.
 
 ### Configuration
 
-- Configuration is CLI-only for now. The env-var and `capis.properties` sources sketched in
-  `docs/` are not implemented; `ConfigLoader` only understands `--key=value`.
+- Configuration comes from `config.properties` and `--key=value` arguments. Environment variables
+	and `capis.properties` are not implemented.
 - `--maxConnections` is parsed and range-checked but not enforced: the server accepts as many
   clients as the OS lets it.
-- `--purgeLimit` is computed, validated and printed in the banner, but `CacheFactory` still builds
-  both caches with their default sweep budget of `100`; the two-argument cache constructors that
-  accept a limit are never called.
+- `--purgeLimit` is computed, validated and printed in the banner, and `CacheFactory` passes it to
+	both cache implementations.
 - Eviction policy is startup-only. Switching LRU to LFU while keys exist is not a live change.
+- The AOF file is always `appendonly.aof`: `AppConfig` has an `aofFileName` field and
+  `Builder.setAofFileName`, but `ConfigLoader` has no option for it.
 
 ### Storage and expiry
 
 - Capacity defaults to a silent 100000 entries: once it is reached, `LRUCache` drops the
   least-recently-used key and `LFUCache` drops the least-frequently-used one, with no signal either
   way.
-- The expiry sweep only samples up to 100 entries per event-loop pass, so an expired key can stay in
-  memory for a little while until it is either touched or reached by the sweep.
+- The expiry sweep only samples up to `purgeLimit` entries per event-loop pass, so an expired key can
+	stay in memory for a little while until it is either touched or reached by the sweep.
 - Sets are backed by a `HashSet` and sorted sets by a `TreeSet` with a linear `find`, so `SMEMBERS`
   order is unspecified and `ZADD`/`ZRANGE` are O(n).
-- `LFUCache.size()` no longer prints debug output to stdout.
+- Lists are backed by `ArrayDeque`, so pushes and pops at either end are O(1), but `LINDEX` and
+  `LRANGE` walk the deque.
 
 ### Command semantics
 
@@ -430,9 +445,20 @@ is a knock on the project; it is just the current scope.
   surfaces as an error inside the `EXEC` reply (real Redis rejects it at queue time).
 - Transactions are per-connection, and isolation comes from the single-threaded event loop rather
   than from any explicit locking.
-- No persistence, replication, authentication, clustering or blocking commands.
 
-I deliberately left the bigger pieces — persistence, pub/sub, clustering, ACLs — for later or out of
+### Persistence
+
+- Only commands that opt into `changesState()` and `persistentCommand()` are recorded. Today that is
+  `SET`, `SETEX`, `MSET`, `INCR`, `DECR`, `INCRBYFLOAT`, `DEL`, `EXPIRE`, `PERSIST`, `GETDEL`,
+  `FLUSHALL`, `LPUSH`, `RPUSH` and `SREM`. `APPEND`, `SADD`, `HSET`, `ZADD`, `LPOP`, `RPOP` and
+  others are not persisted, so their effects are lost on restart.
+- `Persistence` logs every state-changing command whose dispatch reply is not an error. That includes
+  commands queued inside `MULTI` (their reply is `+QUEUED`), so `DISCARD` does not remove entries
+  already written to the log.
+- Replay decodes the log and re-runs commands through `CommandHandler`. There is no snapshotting,
+  fsync policy, log rewrite/compaction, replication, authentication, clustering or blocking commands.
+
+I deliberately left the bigger pieces — replication, pub/sub, clustering, ACLs — for later or out of
 scope entirely. They are a different kind of project from the one I set out to build.
 
 ## System diagram
@@ -453,13 +479,16 @@ flowchart LR
         Parser["Parser<br/>RESP in / RESP out"]
         Core["CapisCore"]
         Handler["CommandHandler<br/>+ TransactionManager"]
-        Registry["CommandRegistry<br/>38 commands"]
+		Registry["CommandRegistry<br/>38 commands"]
+        Persist["Persistence<br/>state changes + replay"]
+        Log[("appendonly.aof")]
         Store["KeyValueStore"]
         Cache[("Cache<br/>LRU or LFU")]
     end
 
     CLI --> Bootstrap["Bootstrap<br/>+ AppConfig"]
     Bootstrap -. wires at startup .-> Server
+    Bootstrap -. wires at startup .-> Persist
     Bootstrap -. wires at startup .-> Store
 
     Client -->|commands| Server
@@ -470,6 +499,8 @@ flowchart LR
     Core --> Handler
     Handler --> Registry
     Registry --> Store
+    Core --> Persist
+    Persist --> Log
     Store --> Cache
     Server -->|replies| Client
 ```
@@ -500,12 +531,14 @@ classDiagram
 		-int bufferSize
 		-EvictionPolicy evictionPolicy
 		-int purgeLimit
+		-String aofFileName
 		+getPort() int
 		+getMaxConnections() int
 		+getCapacity() int
 		+getBufferSize() int
 		+getEvictionPolicy() EvictionPolicy
 		+getPurgeLimit() int
+		+getAofFileName() String
 	}
 
 	class Builder {
@@ -515,6 +548,7 @@ classDiagram
 		+setBufferSize(int b) Builder
 		+setEvictionPolicy(EvictionPolicy p) Builder
 		+setPurgeLimit(int l) Builder
+		+setAofFileName(String fileName) Builder
 		+build() AppConfig
 		-calculatePurgeLimit(int capacity) int
 	}
@@ -574,8 +608,26 @@ classDiagram
 	class CapisCore {
 		-Parser parser
 		-CommandHandler commandHandler
-		+CapisCore(Parser parser, CommandHandler commandHandler)
+		-Persistence persistence
+		+CapisCore(Parser parser, CommandHandler commandHandler, Persistence persistence)
 		+handle(ByteBuffer buffer, ClientState clientState) String
+	}
+
+	class Persistence {
+		-FileSystem fileSystem
+		+Persistence(FileSystem fileSystem)
+		+handle(Command command, Parser parser, String[] args) void
+		+replay(Parser parser, CommandHandler commandHandler, ClientState replayClientState) void
+	}
+
+	class FileSystem {
+		-BufferedWriter writer
+		-String fileName
+		+FileSystem(String fileName)
+		+open(String fileName) void
+		+append(String data) void
+		+close() void
+		+readAll() byte[]
 	}
 
 	class Parser {
@@ -595,6 +647,7 @@ classDiagram
 		+execute(String[] args, ClientState clientState) RespValue
 		+executeTransaction(ClientState clientState) RespValue
 		+executeImmediately(String[] args) RespValue
+		+GetCommand(String commandName) Command
 	}
 
 	class CommandRegistry {
@@ -614,7 +667,9 @@ classDiagram
 	class Command {
 		<<interface>>
 		+getName() String
+		+changesState() boolean
 		+execute(String[] args) RespValue
+		+persistentCommand(String[] args) RespValue
 	}
 
 	class PingCommand
@@ -662,6 +717,7 @@ classDiagram
 		-ByteBuffer inputBuffer
 		-ByteBuffer outputBuffer
 		+ClientState(int bufferSize)
+		+ClientState()
 		+discardTransaction() void
 		+isInTransaction() boolean
 		+beginTransaction() void
@@ -858,6 +914,7 @@ classDiagram
 	Bootstrap *-- MaintainanceService : wires
 	Bootstrap *-- CommandRegistry : registers commands
 	Bootstrap *-- CapisCore : wires
+	Bootstrap *-- Persistence : wires
 	Bootstrap --> NioServer : returns
 	CacheFactory ..> Cache : returns
 	CacheFactory ..> LRUCache : creates for LRU
@@ -870,6 +927,11 @@ classDiagram
 	MaintainanceService --> KeyValueStore : sweeps expiry
 	CapisCore *-- Parser
 	CapisCore *-- CommandHandler
+	CapisCore *-- Persistence
+	Persistence *-- FileSystem : appends to
+	Persistence --> Command : asks for persistent form
+	Persistence --> Parser : encodes
+	Persistence --> CommandHandler : replays through
 	CommandHandler o-- CommandRegistry : looks up
 	CommandHandler *-- TransactionManager
 	CommandHandler --> ClientState : reads/queues per connection

@@ -2,7 +2,6 @@ package com.capis;
         
 import java.io.IOException;
 
-import com.capis.AOF.AOF;
 import com.capis.Commands.AppendCommand;
 import com.capis.Commands.CommandHandler;
 import com.capis.Commands.CommandRegistry;
@@ -45,6 +44,7 @@ import com.capis.Commands.ZADDCommand;
 import com.capis.Commands.ZRANGECommand;
 import com.capis.Config.AppConfig;
 import com.capis.DataTypes.Core.Value;
+import com.capis.FileSystem.FileSystem;
 import com.capis.Network.ClientState;
 import com.capis.Network.ClientStateFactory;
 import com.capis.Network.NioServer;
@@ -78,9 +78,9 @@ public class Bootstrap {
         CommandHandler commandHandler = new CommandHandler(commandRegistry);
         
 
-        AOF aof = new AOF(appConfig.getAofFileName());
+        FileSystem fileSystem = new FileSystem(appConfig.getAofFileName());
 
-        Persistence persistence = new Persistence(aof);
+        Persistence persistence = new Persistence(fileSystem);
 
         CapisCore capisCore = new CapisCore(parser, commandHandler, persistence);
 

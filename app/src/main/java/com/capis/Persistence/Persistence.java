@@ -3,19 +3,19 @@ package com.capis.Persistence;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import com.capis.AOF.AOF;
 import com.capis.Commands.Command;
 import com.capis.Commands.CommandHandler;
 import com.capis.DataTypes.RespValues.RespErr;
 import com.capis.DataTypes.RespValues.RespValue;
+import com.capis.FileSystem.FileSystem;
 import com.capis.Network.ClientState;
 import com.capis.Parser.Parser;
 
 public class Persistence {
-    private final AOF aof;
+    private final FileSystem fileSystem;
 
-    public Persistence(AOF aof) {
-        this.aof = aof;
+    public Persistence(FileSystem fileSystem) {
+        this.fileSystem = fileSystem;
     }
 
     public void handle(Command command, Parser parser, String[] args) {
@@ -28,7 +28,7 @@ public class Persistence {
         String respString = parser.encode(resp);
 
         try {
-            aof.append(respString);
+            fileSystem.append(respString);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -40,7 +40,7 @@ public class Persistence {
             ClientState replayClientState
     ) throws IOException {
 
-        byte[] data = aof.readAll();
+        byte[] data = fileSystem.readAll();
 
         System.out.println(data.length + " bytes read from AOF file.");
 

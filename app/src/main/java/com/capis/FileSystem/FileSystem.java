@@ -1,4 +1,4 @@
-package com.capis.AOF;
+package com.capis.FileSystem;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -6,13 +6,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-public class AOF {
+public class FileSystem {
 
     private BufferedWriter writer;
 
     private String fileName;
 
-    public AOF(String fileName) {
+    public FileSystem(String fileName) {
         this.fileName = fileName;
         try {
             openWriter(this.fileName);
